@@ -365,3 +365,5 @@ TEST_GSMs = [
         channel_count=1.0
     ),
 ]
+
+print(",".join(list(map(lambda x: f"{x.gsm}", TEST_GSMs))))

@@ -1,0 +1,7 @@
+name: pubtrends_datasets
+channels:
+  - defaults
+dependencies:
+  - parameterized=0.9.0=py314h06a4308_0
+  - pip=25.3=pyh0d26453_0
+
