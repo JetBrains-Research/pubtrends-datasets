@@ -1,7 +1,7 @@
 from typing import List
 import sqlite3
 import json
-from db.gse import GSE
+from src.db.gse import GSE
 from src.db.gse_loader import GSELoader
 
 
@@ -14,4 +14,4 @@ class GEOmetadbGSELoader(GSELoader):
         cursor = self.conn.cursor()
         cursor.execute("SELECT * FROM gse WHERE gse IN (SELECT value FROM json_each(?))", (json.dumps(gse_accessions), ))
         results = cursor.fetchall()
-        return [GSE(**result) for result in results]
+        return [GSE(*result) for result in results]
