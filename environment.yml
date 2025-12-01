@@ -5,4 +5,5 @@ dependencies:
   - parameterized=0.9.0=py314h06a4308_0
   - pip=25.3=pyh0d26453_0
   - flask=3.1.2
+  - flasgger=0.9.7.1
 

@@ -26,3 +26,7 @@ conda activate pubtrends_datasets
 ```
 
 Then run the `run.sh` script. The app should now be running on port 5002.
+
+## API Documentation
+
+The API documentation is available at `http://localhost:5002/apidocs`.

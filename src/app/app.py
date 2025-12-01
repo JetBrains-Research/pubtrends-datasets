@@ -3,10 +3,13 @@
 from flask import Flask, request, jsonify
 from typing import List
 import os
+from flasgger import Swagger
 from src.db.GEOmetadb_dataset_linker import GEOmetadbDatasetLinker
 from src.db.geometadb_gse_loader import GEOmetadbGSELoader
+from src.app.swagger_template import swagger_template
 
 app = Flask(__name__)
+swagger = Swagger(app, template=swagger_template)
 
 # Initialize the database connections
 # Default to the GEOmetadb.sqlite in the project root
@@ -23,12 +26,46 @@ gse_loader = GEOmetadbGSELoader(GEOmetadb_path=DEFAULT_DB_PATH)
 def get_datasets():
     """
     GET endpoint to retrieve GSE objects by PubMed IDs.
-    
-    Query parameters:
-        pubmed_ids: Comma-separated list of PubMed IDs (e.g., "30530648,31018141")
-    
-    Returns:
-        JSON list of GSE objects associated with the provided PubMed IDs.
+    ---
+    summary: Get GSE datasets associated with PubMed IDs
+    description: |
+      Retrieves Gene Expression Omnibus Series (GSE) datasets that are linked to the provided PubMed IDs.
+      The PubMed IDs should be provided as a comma-separated list in the query parameter.
+    parameters:
+      - name: pubmed_ids
+        in: query
+        type: string
+        required: true
+        description: Comma-separated list of PubMed IDs (e.g., "30530648,31018141")
+        example: "30530648,31018141"
+    responses:
+      200:
+        description: Successful response with list of GSE datasets
+        schema:
+          type: array
+          items:
+            $ref: '#/definitions/GSE'
+        examples:
+          application/json:
+            - gse: "GSE12345"
+              title: "Gene expression analysis"
+              status: "Public on Jan 01 2020"
+              pubmed_id: 30530648
+            - gse: "GSE67890"
+              title: "Another dataset"
+              status: "Public on Feb 01 2020"
+              pubmed_id: 31018141
+      400:
+        description: Bad request - missing or invalid PubMed IDs
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "pubmed_ids parameter is required"
+        examples:
+          application/json:
+            error: "pubmed_ids parameter is required"
     """
     pubmed_ids_param = request.args.get('pubmed_ids', '')
     
