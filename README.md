@@ -30,3 +30,10 @@ Then run the `run.sh` script. The app should now be running on port 5002.
 ## API Documentation
 
 The API documentation is available at `http://localhost:5002/apidocs`.
+
+## Testing
+
+You can launch the unit tests by running this command:
+```
+python -m unittest discover src/test
+```
