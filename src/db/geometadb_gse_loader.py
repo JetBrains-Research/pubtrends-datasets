@@ -10,8 +10,8 @@ class GEOmetadbGSELoader(GSELoader):
         self.GEOmetadb_path = GEOmetadb_path
     
     def load_gses(self, gse_accessions: List[str]) -> List[GSE]:
-        conn = sqlite3.connect(self.GEOmetadb_path)
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM gse WHERE gse IN (SELECT value FROM json_each(?))", (json.dumps(gse_accessions), ))
-        results = cursor.fetchall()
-        return [GSE(*result) for result in results]
+        with sqlite3.connect(self.GEOmetadb_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM gse WHERE gse IN (SELECT value FROM json_each(?))", (json.dumps(gse_accessions), ))
+            results = cursor.fetchall()
+            return [GSE(*result) for result in results]

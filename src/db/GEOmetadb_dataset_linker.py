@@ -8,8 +8,8 @@ class GEOmetadbDatasetLinker(PaperDatasetLinker):
         self.GEOmetadb_path = GEOmetadb_path
     
     def link_to_datasets(self, pubmed_ids: List[str]) -> List[str]:
-        conn = sqlite3.connect(self.GEOmetadb_path)
-        cursor = conn.cursor()
-        cursor.execute("SELECT gse FROM gse WHERE pubmed_id IN (SELECT value FROM json_each(?))", (json.dumps(pubmed_ids), ))
-        results = cursor.fetchall()
-        return [result[0] for result in results]
+        with sqlite3.connect(self.GEOmetadb_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT gse FROM gse WHERE pubmed_id IN (SELECT value FROM json_each(?))", (json.dumps(pubmed_ids), ))
+            results = cursor.fetchall()
+            return [result[0] for result in results]
