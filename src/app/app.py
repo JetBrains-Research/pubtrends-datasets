@@ -7,6 +7,8 @@ import logging
 import json
 from flasgger import Swagger
 from src.db.geometadb_dataset_linker import GEOmetadbDatasetLinker
+import requests
+from src.db.elink_dataset_linker import ELinkDatasetLinker
 from src.db.geometadb_gse_loader import GEOmetadbGSELoader
 from src.app.swagger_template import swagger_template
 from src.config.config import Config
@@ -96,16 +98,20 @@ def get_datasets():
         return jsonify({"error": "At least one valid PubMed ID is required"}), 400
     
     try:
-        gse_accessions = dataset_linker.link_to_datasets(pubmed_ids)
-        
-        if not gse_accessions:
-            return jsonify([])
-        
-        gse_objects = gse_loader.load_gses(gse_accessions)
-        
-        result = [asdict(gse) for gse in gse_objects]
-        
-        return jsonify(result)
+        with requests.Session() as http_session:
+          dataset_linker = ELinkDatasetLinker(http_session)
+          gse_accessions = dataset_linker.link_to_datasets(pubmed_ids)
+          print("Accessions", gse_accessions)
+          
+          if not gse_accessions:
+              return jsonify([])
+          
+          # Load the GSE objects
+          gse_objects = gse_loader.load_gses(gse_accessions)
+          
+          result = [asdict(gse) for gse in gse_objects]
+          
+          return jsonify(result)
     
     except Exception as e:
         logger.error(f'/datasets exception {log_request(request)}')
