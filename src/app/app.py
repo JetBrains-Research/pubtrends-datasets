@@ -1,5 +1,6 @@
 """Flask application for GEOmetadb dataset queries."""
 
+from dataclasses import asdict
 from flask import Flask, request, jsonify
 from typing import List
 import os
@@ -72,24 +73,20 @@ def get_datasets():
     if not pubmed_ids_param:
         return jsonify({"error": "pubmed_ids parameter is required"}), 400
     
-    # Parse comma-separated pubmed IDs
     pubmed_ids = [pid.strip() for pid in pubmed_ids_param.split(',') if pid.strip()]
     
     if not pubmed_ids:
         return jsonify({"error": "At least one valid PubMed ID is required"}), 400
     
     try:
-        # Get GSE accessions for the given PubMed IDs
         gse_accessions = dataset_linker.link_to_datasets(pubmed_ids)
         
         if not gse_accessions:
             return jsonify([])
         
-        # Load the GSE objects
         gse_objects = gse_loader.load_gses(gse_accessions)
         
-        # Convert to dictionaries for JSON serialization
-        result = [gse.to_dict() for gse in gse_objects]
+        result = [asdict(gse) for gse in gse_objects]
         
         return jsonify(result)
     
