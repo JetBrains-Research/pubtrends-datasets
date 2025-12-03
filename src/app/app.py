@@ -4,6 +4,8 @@ from dataclasses import asdict
 from flask import Flask, request, jsonify
 from typing import List
 import os
+import logging
+import json
 from flasgger import Swagger
 from src.db.GEOmetadb_dataset_linker import GEOmetadbDatasetLinker
 from src.db.geometadb_gse_loader import GEOmetadbGSELoader
@@ -17,6 +19,25 @@ CONFIG = Config(test=False)
 dataset_linker = GEOmetadbDatasetLinker(CONFIG)
 gse_loader = GEOmetadbGSELoader(CONFIG)
 
+# Deployment and development
+LOG_PATHS = ['/logs', os.path.expanduser('~/.pubtrends-datasets/logs')]
+for p in LOG_PATHS:
+    if os.path.isdir(p):
+        logfile = os.path.join(p, 'app.log')
+        break
+else:
+    raise RuntimeError('Failed to configure main log file')
+
+logging.basicConfig(filename=logfile,
+                    filemode='a',
+                    format='[%(asctime)s,%(msecs)03d: %(levelname)s/%(name)s] %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S',
+                    level=logging.INFO)
+
+logger = app.logger
+
+def log_request(r):
+    return f'addr:{r.remote_addr} args:{json.dumps(r.args)}'
 
 @app.route('/datasets', methods=['GET'])
 def get_datasets():
@@ -63,9 +84,11 @@ def get_datasets():
           application/json:
             error: "pubmed_ids parameter is required"
     """
+    logger.info(f'/datasets {log_request(request)}')
     pubmed_ids_param = request.args.get('pubmed_ids', '')
     
     if not pubmed_ids_param:
+        logger.error(f'/datasets error {log_request(request)}')
         return jsonify({"error": "pubmed_ids parameter is required"}), 400
     
     pubmed_ids = [pid.strip() for pid in pubmed_ids_param.split(',') if pid.strip()]
@@ -86,6 +109,7 @@ def get_datasets():
         return jsonify(result)
     
     except Exception as e:
+        logger.error(f'/datasets exception {log_request(request)}')
         return jsonify({"error": str(e)}), 500
 
 
