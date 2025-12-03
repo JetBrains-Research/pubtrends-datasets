@@ -1,4 +1,5 @@
 import unittest
+from src.config.config import Config
 from src.db.geometadb_gse_loader import GEOmetadbGSELoader
 from parameterized import parameterized
 from typing import List
@@ -7,7 +8,8 @@ from src.test.db.test_datasets import TEST_GSEs
 
 class TestGEOmetadbGSELoader(unittest.TestCase):
     def setUp(self):
-        self.GEOmetadb_gse_loader = GEOmetadbGSELoader(GEOmetadb_path="src/test/db/testGEOmetadb.sqlite")
+        self.test_config = Config(test=True)
+        self.GEOmetadb_gse_loader = GEOmetadbGSELoader(self.test_config)
 
     @parameterized.expand([
         (["GSE116672"], [TEST_GSEs[0]]),

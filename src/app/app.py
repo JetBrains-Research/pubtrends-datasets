@@ -8,19 +8,14 @@ from flasgger import Swagger
 from src.db.GEOmetadb_dataset_linker import GEOmetadbDatasetLinker
 from src.db.geometadb_gse_loader import GEOmetadbGSELoader
 from src.app.swagger_template import swagger_template
+from src.config.config import Config
 
 app = Flask(__name__)
 swagger = Swagger(app, template=swagger_template)
+CONFIG = Config(test=False)
 
-# Initialize the database connections
-# Default to the GEOmetadb.sqlite in the project root
-DEFAULT_DB_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    "GEOmetadb.sqlite"
-)
-
-dataset_linker = GEOmetadbDatasetLinker(GEOmetadb_path=DEFAULT_DB_PATH)
-gse_loader = GEOmetadbGSELoader(GEOmetadb_path=DEFAULT_DB_PATH)
+dataset_linker = GEOmetadbDatasetLinker(CONFIG)
+gse_loader = GEOmetadbGSELoader(CONFIG)
 
 
 @app.route('/datasets', methods=['GET'])

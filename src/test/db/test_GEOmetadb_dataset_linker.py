@@ -1,11 +1,13 @@
 import unittest
+from src.config.config import Config
 from src.db.GEOmetadb_dataset_linker import GEOmetadbDatasetLinker
 from parameterized import parameterized
 from typing import List
 
 class TestGEOmetadbDatasetLinker(unittest.TestCase):
     def setUp(self):
-        self.GEOmetadb_dataset_linker = GEOmetadbDatasetLinker(GEOmetadb_path="src/test/db/testGEOmetadb.sqlite")
+        self.test_config = Config(test=True)
+        self.GEOmetadb_dataset_linker = GEOmetadbDatasetLinker(self.test_config)
 
     @parameterized.expand([
         (["30530648"], ["GSE116672"]),

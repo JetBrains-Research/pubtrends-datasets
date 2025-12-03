@@ -18,6 +18,8 @@ To set up the project, run the `setup.sh` script:
 
 This script will create a conda environment called `pubtrends_datasets` and install the prerequisite packages.
 
+After the script finishes, please edit and copy the `config.properties` file to `~/.pubtrends-datasets/config.properties`.
+
 ## Launch instructions
 
 First make sure that the `pubtrends_datasets` conda environment is active. You can activate the environment by running this command:
