@@ -1,6 +1,6 @@
 import unittest
 from src.config.config import Config
-from src.db.GEOmetadb_dataset_linker import GEOmetadbDatasetLinker
+from src.db.geometadb_dataset_linker import GEOmetadbDatasetLinker
 from parameterized import parameterized
 from typing import List
 
