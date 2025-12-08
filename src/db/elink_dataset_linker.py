@@ -5,9 +5,9 @@ from src.db.paper_dataset_linker import PaperDatasetLinker
 from src.exception.entrez_error import EntrezError
 
 class ELinkDatasetLinker(PaperDatasetLinker):
+    ELINK_REQUEST_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi"
+    EFETCH_REQUEST_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
     def __init__(self, http_session: requests.Session):
-        self.elink_request_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi"
-        self.efetch_request_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
         self.http_session = http_session
     
     def link_to_datasets(self, pubmed_ids: List[str]) -> List[str]:
@@ -22,7 +22,7 @@ class ELinkDatasetLinker(PaperDatasetLinker):
         :returns: A list that contains the IDs of the GEO datasets associated with the PubMed IDs.
         """
         response = self.http_session.post(
-        self.elink_request_url,
+        ELinkDatasetLinker.ELINK_REQUEST_URL,
         params={
             "dbfrom": "pubmed",
             "db": "gds",
@@ -55,7 +55,7 @@ class ELinkDatasetLinker(PaperDatasetLinker):
         :return: List of GEO accessions in the same order.
         """
         response = self.http_session.get(
-            self.efetch_request_url,
+            ELinkDatasetLinker.EFETCH_REQUEST_URL,
             params={"db": "gds", "id": ",".join(geo_ids)},
         )
         if response.status_code != 200:
