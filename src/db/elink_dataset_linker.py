@@ -19,7 +19,6 @@ class ELinkDatasetLinker(PaperDatasetLinker):
         Fetches GEO dataset ids for papers with the specified PubMed IDs.
 
         :param pubmed_ids: List of PubMed IDs to fetch GEO dataset ids for.
-        :param session: aiohtttp session through which to download the data.
         :returns: A list that contains the IDs of the GEO datasets associated with the PubMed IDs.
         """
         response = self.http_session.post(
@@ -53,7 +52,6 @@ class ELinkDatasetLinker(PaperDatasetLinker):
         Fetches GEO accessions for the given GEO IDs from the NCBI E-Utilities.
 
         :param geo_ids: GEO dataset IDs for which to fetch accessions.
-        :param session: aiohttp session through which to download the data.
         :return: List of GEO accessions in the same order.
         """
         response = self.http_session.get(

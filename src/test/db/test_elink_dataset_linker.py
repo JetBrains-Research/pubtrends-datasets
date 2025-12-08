@@ -1,8 +1,8 @@
-from unittest.mock import Mock
 import unittest
 from unittest.mock import Mock
+
+from src.db.elink_dataset_linker import ELinkDatasetLinker  # Assuming your class is here
 from src.exception.entrez_error import EntrezError
-from src.db.elink_dataset_linker import ELinkDatasetLinker # Assuming your class is here
 
 MOCK_ELINK_DATA = {
     "header": {},
