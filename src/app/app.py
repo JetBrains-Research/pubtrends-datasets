@@ -1,23 +1,23 @@
 """Flask application for GEOmetadb dataset queries."""
 
-from dataclasses import asdict
-from flask import Flask, request, jsonify
-import os
-import logging
 import json
-from flasgger import Swagger
-from src.db.geometadb_dataset_linker import GEOmetadbDatasetLinker
+import logging
+import os
+from dataclasses import asdict
+
 import requests
-from src.db.europepmc_dataset_linker import EuropePMCDatasetLinker
-from src.db.geometadb_gse_loader import GEOmetadbGSELoader
+from flasgger import Swagger
+from flask import Flask, request, jsonify
+
 from src.app.swagger_template import swagger_template
 from src.config.config import Config
+from src.db.europepmc_dataset_linker import EuropePMCDatasetLinker
+from src.db.geometadb_gse_loader import GEOmetadbGSELoader
 
 app = Flask(__name__)
 swagger = Swagger(app, template=swagger_template)
 CONFIG = Config(test=False)
 
-dataset_linker = GEOmetadbDatasetLinker(CONFIG)
 gse_loader = GEOmetadbGSELoader(CONFIG)
 
 # Deployment and development
