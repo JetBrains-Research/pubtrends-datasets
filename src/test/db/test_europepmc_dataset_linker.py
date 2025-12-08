@@ -32,11 +32,13 @@ class TestEuropePMCDatasetLinker(unittest.TestCase):
         self.mock_fail_response = Mock()
         self.mock_fail_response.status_code = 500
         self.mock_fail_response.json.return_value = "ERROR"
-        self.mock_fail_response.raise_for_status.side_effect = requests.HTTPError
+        self.mock_fail_response.raise_for_status.side_effect = requests.HTTPError()
+        self.mock_fail_response.raise_for_status.side_effect.response = self.mock_fail_response
 
         self.mock_empty_response = Mock()
         self.mock_empty_response.status_code = 400
-        self.mock_empty_response.raise_for_status.side_effect = requests.HTTPError
+        self.mock_empty_response.raise_for_status.side_effect = requests.HTTPError()
+        self.mock_empty_response.raise_for_status.side_effect.response = self.mock_empty_response
 
         self.mock_session = Mock()
 
