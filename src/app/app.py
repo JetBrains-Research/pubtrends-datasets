@@ -2,7 +2,6 @@
 
 from dataclasses import asdict
 from flask import Flask, request, jsonify
-from typing import List
 import os
 import logging
 import json
