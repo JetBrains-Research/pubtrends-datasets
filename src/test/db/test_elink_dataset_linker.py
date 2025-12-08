@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import Mock
 
+from parameterized import parameterized
+
 from src.db.elink_dataset_linker import ELinkDatasetLinker  # Assuming your class is here
 from src.exception.entrez_error import EntrezError
 
@@ -84,10 +86,11 @@ class TestELinkDatasetLinker(unittest.TestCase):
         expected_result = ["GSE12345", "GSE54321"]
 
         self.assertListEqual(result, expected_result)
-    
-    def test_link_papers_to_datasets_elink_failure(self):
+
+    @parameterized.expand([(["112233"]), ([],)])
+    def test_link_papers_to_datasets_elink_failure(self, pubmed_ids):
         self.mock_session.post.return_value = self.mock_fail_response
-        self.assertRaises(EntrezError, self.linker.link_to_datasets, ["112233"])
+        self.assertRaises(EntrezError, self.linker.link_to_datasets, pubmed_ids)
         self.mock_session.post.assert_called_once()
         self.mock_session.get.assert_not_called()
 
