@@ -101,7 +101,6 @@ def get_datasets():
         with requests.Session() as http_session:
           dataset_linker = ELinkDatasetLinker(http_session)
           gse_accessions = dataset_linker.link_to_datasets(pubmed_ids)
-          print("Accessions", gse_accessions)
           
           if not gse_accessions:
               return jsonify([])
