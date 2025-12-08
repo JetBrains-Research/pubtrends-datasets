@@ -7,7 +7,7 @@ import os
 import logging
 import json
 from flasgger import Swagger
-from src.db.GEOmetadb_dataset_linker import GEOmetadbDatasetLinker
+from db.geometadb_dataset_linker import GEOmetadbDatasetLinker
 from src.db.geometadb_gse_loader import GEOmetadbGSELoader
 from src.app.swagger_template import swagger_template
 from src.config.config import Config
