@@ -8,7 +8,7 @@ import json
 from flasgger import Swagger
 from src.db.geometadb_dataset_linker import GEOmetadbDatasetLinker
 import requests
-from src.db.elink_dataset_linker import ELinkDatasetLinker
+from src.db.europepmc_dataset_linker import EuropePMCDatasetLinker
 from src.db.geometadb_gse_loader import GEOmetadbGSELoader
 from src.app.swagger_template import swagger_template
 from src.config.config import Config
@@ -99,7 +99,7 @@ def get_datasets():
     
     try:
         with requests.Session() as http_session:
-          dataset_linker = ELinkDatasetLinker(http_session)
+          dataset_linker = EuropePMCDatasetLinker(http_session)
           gse_accessions = dataset_linker.link_to_datasets(pubmed_ids)
           
           if not gse_accessions:
@@ -113,7 +113,7 @@ def get_datasets():
           return jsonify(result)
     
     except Exception as e:
-        logger.error(f'/datasets exception {log_request(request)}')
+        logger.error(f'/datasets exception {e}')
         return jsonify({"error": str(e)}), 500
 
 
