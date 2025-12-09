@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import Mock
 
-from parameterized import parameterized
 import requests
 
 from src.db.elink_dataset_linker import ELinkDatasetLinker  # Assuming your class is here
