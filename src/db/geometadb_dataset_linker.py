@@ -9,7 +9,8 @@ class GEOmetadbDatasetLinker(PaperDatasetLinker):
         self.geometadb_path = config.geometadb_path
     
     def link_to_datasets(self, pubmed_ids: List[str]) -> List[str]:
-        print(self.geometadb_path)
+        if not pubmed_ids:
+            raise ValueError("At least one valid PubMed ID is required")
         with sqlite3.connect(self.geometadb_path) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT gse FROM gse WHERE pubmed_id IN (SELECT value FROM json_each(?))", (json.dumps(pubmed_ids), ))

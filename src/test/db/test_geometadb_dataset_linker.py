@@ -16,3 +16,6 @@ class TestGEOmetadbDatasetLinker(unittest.TestCase):
     def test_link_to_datasets(self, pubmed_ids: List[str], expected_geo_accessions: List[str]):
         datasets = self.GEOmetadb_dataset_linker.link_to_datasets(pubmed_ids)
         self.assertListEqual(datasets, expected_geo_accessions)
+
+    def test_link_to_datasets_empty_input(self):
+        self.assertRaises(ValueError, self.GEOmetadb_dataset_linker.link_to_datasets, [])
