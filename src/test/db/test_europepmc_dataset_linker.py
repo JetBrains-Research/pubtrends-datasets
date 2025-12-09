@@ -66,8 +66,8 @@ class TestEuropePMCDatasetLinker(unittest.TestCase):
 
     def test_link_papers_to_datasets_empty_input(self):
         self.mock_session.get.return_value = self.mock_empty_response
-        self.assertRaises(EuropePMCError, self.linker.link_to_datasets, ["112233"])
-        self.mock_session.get.assert_called_once()
+        self.assertRaises(ValueError, self.linker.link_to_datasets, [])
+        self.mock_session.get.assert_not_called()
 
     def test_link_papers_to_datasets_connection_error(self):
         self.mock_session.get.side_effect = requests.RequestException

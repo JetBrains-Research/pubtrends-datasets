@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import Mock
 
 from parameterized import parameterized
+import requests
 
 from src.db.elink_dataset_linker import ELinkDatasetLinker  # Assuming your class is here
 from src.exception.entrez_error import EntrezError
@@ -45,6 +46,8 @@ class TestELinkDatasetLinker(unittest.TestCase):
         self.mock_fail_response = Mock()
         self.mock_fail_response.status_code = 500
         self.mock_fail_response.json.return_value = "ERROR"
+        self.mock_fail_response.raise_for_status.side_effect = requests.HTTPError()
+        self.mock_fail_response.raise_for_status.side_effect.response = self.mock_fail_response
 
         self.mock_efetch_response = Mock()
         self.mock_efetch_response.status_code = 200
@@ -87,20 +90,38 @@ class TestELinkDatasetLinker(unittest.TestCase):
 
         self.assertListEqual(result, expected_result)
 
-    @parameterized.expand([(["112233"]), ([],)])
-    def test_link_papers_to_datasets_elink_failure(self, pubmed_ids):
+    def test_link_papers_to_datasets_elink_server_error(self):
         self.mock_session.post.return_value = self.mock_fail_response
-        self.assertRaises(EntrezError, self.linker.link_to_datasets, pubmed_ids)
+        self.assertRaises(EntrezError, self.linker.link_to_datasets, ["112233"])
         self.mock_session.post.assert_called_once()
         self.mock_session.get.assert_not_called()
 
-    def test_link_papers_to_datasets_efetch_failure(self):
+    def test_link_papers_to_datasets_efetch_server_error(self):
         self.mock_session.post.return_value = self.mock_elink_response
         self.mock_session.get.return_value = self.mock_fail_response
 
         self.assertRaises(EntrezError, self.linker.link_to_datasets, ["112233"])
         self.mock_session.post.assert_called_once()
         self.mock_session.get.assert_called_once()
+    
+    def test_link_papers_to_datasets_elink_network_failure(self):
+        self.mock_session.post.side_effect = requests.RequestException
+        self.assertRaises(EntrezError, self.linker.link_to_datasets, ["112233"])
+        self.mock_session.post.assert_called_once()
+        self.mock_session.get.assert_not_called()
+
+    def test_link_papers_to_datasets_efetch_network_failure(self):
+        self.mock_session.post.return_value = self.mock_elink_response
+        self.mock_session.get.side_effect = requests.RequestException
+        
+        self.assertRaises(EntrezError, self.linker.link_to_datasets, ["112233"])
+        self.mock_session.post.assert_called_once()
+        self.mock_session.get.assert_called_once()
+        
+    def test_link_papers_to_datasets_empty_input(self):
+        self.assertRaises(ValueError, self.linker.link_to_datasets, [])
+        self.mock_session.post.assert_not_called()
+        self.mock_session.get.assert_not_called()
         
         
         

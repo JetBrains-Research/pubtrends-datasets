@@ -23,6 +23,8 @@ class EuropePMCDatasetLinker(PaperDatasetLinker):
         :return: List of GEO acessions associated with the papers.
         """
         # There is no explicit rate limit for EuropePMC
+        if not pubmed_ids:
+            raise ValueError("At least one valid PubMed ID is required")
         batch_size = EuropePMCDatasetLinker.BATCH_SIZE
         batches = [
             pubmed_ids[i : i + batch_size]
