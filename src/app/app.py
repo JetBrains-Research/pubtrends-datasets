@@ -113,7 +113,7 @@ def get_datasets():
           return jsonify(result)
     
     except Exception as e:
-        logger.error(f'/datasets exception {e}')
+        logger.exception(f'/datasets exception {e}')
         return jsonify({"error": str(e)}), 500
 
 

@@ -14,6 +14,7 @@ class TestGEOmetadbGSELoader(unittest.TestCase):
 
     @parameterized.expand([
         (["GSE116672"], [TEST_GSEs[0]]),
+        ([], []),
         ([TEST_GSEs[0].gse, TEST_GSEs[1].gse], [TEST_GSEs[0], TEST_GSEs[1]]),
     ])
     def test_load_gses(self, gse_accessions: List[str], expected_gses: List[GSE]):
