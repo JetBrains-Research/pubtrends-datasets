@@ -1,12 +1,12 @@
 import unittest
-from unittest.mock import Mock, patch
 from typing import List
+from unittest.mock import Mock
 
 import requests
 from parameterized import parameterized
 
-from src.db.ncbi_gse_loader import NCBIGSELoader
 from src.db.gse import GSE
+from src.db.ncbi_gse_loader import NCBIGSELoader
 from src.exception.geo_error import GEOError
 
 
@@ -15,7 +15,8 @@ class TestNCBIGSELoader(unittest.TestCase):
         self.mock_session = Mock()
         self.loader = NCBIGSELoader(self.mock_session)
 
-    def _make_ok_response(self, gse_accession: str):
+    @staticmethod
+    def _make_ok_response(gse_accession: str):
         resp = Mock()
         resp.status_code = 200
         resp.iter_lines.return_value = iter([f"^SERIES = {gse_accession}", "!Series_title = Title",
@@ -23,7 +24,8 @@ class TestNCBIGSELoader(unittest.TestCase):
         resp.raise_for_status.return_value = None
         return resp
 
-    def _make_error_response(self):
+    @staticmethod
+    def _make_error_response():
         resp = Mock()
         resp.status_code = 500
         resp.iter_lines.return_value = iter(["ERROR"])

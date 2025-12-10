@@ -13,12 +13,14 @@ from src.app.swagger_template import swagger_template
 from src.config.config import Config
 from src.db.europepmc_dataset_linker import EuropePMCDatasetLinker
 from src.db.geometadb_gse_loader import GEOmetadbGSELoader
+from src.db.ncbi_gse_loader import NCBIGSELoader
+from src.db.chained_gse_loader import ChainedGSELoader
 
 app = Flask(__name__)
 swagger = Swagger(app, template=swagger_template)
 CONFIG = Config(test=False)
 
-gse_loader = GEOmetadbGSELoader(CONFIG)
+geometadb_gse_loader = GEOmetadbGSELoader(CONFIG)
 
 # Deployment and development
 LOG_PATHS = ['/logs', os.path.expanduser('~/.pubtrends-datasets/logs')]
@@ -101,12 +103,17 @@ def get_datasets():
         with requests.Session() as http_session:
           dataset_linker = EuropePMCDatasetLinker(http_session)
           gse_accessions = dataset_linker.link_to_datasets(pubmed_ids)
+          gse_accessions = list(filter(lambda acc: acc.startswith("GSE"), gse_accessions))
           
           if not gse_accessions:
               return jsonify([])
           
-          # Load the GSE objects
-          gse_objects = gse_loader.load_gses(gse_accessions)
+          # Load the GSE objects using a chain: GEOmetadb first, then NCBI for missing ones
+          chained_loader = ChainedGSELoader(
+              geometadb_gse_loader,
+              NCBIGSELoader(http_session)
+          )
+          gse_objects = chained_loader.load_gses(gse_accessions)
           
           result = [asdict(gse) for gse in gse_objects]
           

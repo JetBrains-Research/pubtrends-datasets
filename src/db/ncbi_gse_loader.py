@@ -21,8 +21,9 @@ class NCBIGSELoader(GSELoader):
     @staticmethod
     def _format_geoparse_metadata(geoparse_metadata: Dict):
         metadata_dict = {key: item[0] if isinstance(item, list) and len(item) > 0 else "" for key, item in geoparse_metadata.items()}
-        metadata_dict["gse"] = metadata_dict["geo_accession"]
-        metadata_dict["pubmed_id"] = int(metadata_dict["pubmed_id"])
+        metadata_dict["gse"] = metadata_dict.get("geo_accession", "")
+        if "pubmed_id" in metadata_dict:
+            metadata_dict["pubmed_id"] = int(metadata_dict["pubmed_id"])
         NCBIGSELoader._format_contact_info(metadata_dict)
         if "contributor" in geoparse_metadata:
             metadata_dict["contributor"] = NCBIGSELoader.GEOMETADB_SEPARATOR.join(geoparse_metadata["contributor"])
