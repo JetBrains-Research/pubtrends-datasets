@@ -1,4 +1,4 @@
-from typing import List, Dict, Iterable
+from typing import List, Dict
 
 from src.db.gse import GSE
 from src.db.gse_loader import GSELoader

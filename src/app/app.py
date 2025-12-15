@@ -11,6 +11,8 @@ from flask import Flask, request, jsonify
 
 from src.app.swagger_template import swagger_template
 from src.config.config import Config
+from src.db.chained_dataset_linker import ChainedDatasetLinker
+from src.db.elink_dataset_linker import ELinkDatasetLinker
 from src.db.europepmc_dataset_linker import EuropePMCDatasetLinker
 from src.db.geometadb_gse_loader import GEOmetadbGSELoader
 from src.db.ncbi_gse_loader import NCBIGSELoader
@@ -101,7 +103,9 @@ def get_datasets():
     
     try:
         with requests.Session() as http_session:
-          dataset_linker = EuropePMCDatasetLinker(http_session)
+          europepmc_dataset_linker = EuropePMCDatasetLinker(http_session)
+          elink_dataset_linker = ELinkDatasetLinker(http_session)
+          dataset_linker = ChainedDatasetLinker(elink_dataset_linker, europepmc_dataset_linker)
           gse_accessions = dataset_linker.link_to_datasets(pubmed_ids)
           gse_accessions = list(filter(lambda acc: acc.startswith("GSE"), gse_accessions))
           
