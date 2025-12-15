@@ -115,7 +115,7 @@ def get_datasets():
           # Load the GSE objects using a chain: GEOmetadb first, then NCBI for missing ones
           chained_loader = ChainedGSELoader(
               geometadb_gse_loader,
-              NCBIGSELoader(http_session)
+              NCBIGSELoader(http_session, CONFIG)
           )
           gse_objects = chained_loader.load_gses(gse_accessions)
           

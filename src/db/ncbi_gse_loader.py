@@ -1,22 +1,44 @@
+import logging
+import sqlite3
+from dataclasses import fields, astuple
 from typing import List, Dict
 
 import GEOparse
 import requests
 from dacite import from_dict
 
+from src.config.config import Config
 from src.db.gse import GSE
 from src.db.gse_loader import GSELoader
 from src.exception.geo_error import GEOError
 
+logger = logging.getLogger(__name__)
 
 class NCBIGSELoader(GSELoader):
     DOWNLOAD_URL_TEMPLATE = "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={}&targ=self&form=text&view=quick"
     GEOMETADB_SEPARATOR = ";\t"
-    def __init__(self, session: requests.Session) -> None:
+    def __init__(self, session: requests.Session, config: Config) -> None:
         self.session = session
+        self.geometadb_path = config.geometadb_path
 
     def load_gses(self, gse_accessions: List[str]) -> List[GSE]:
-        return [self.download_geo_dataset(accession) for accession in gse_accessions]
+        gses = [self.download_geo_dataset(accession) for accession in gse_accessions]
+        self.save_gses(gses)
+        return gses
+
+    def save_gses(self, gses: list[GSE]):
+        try:
+            with sqlite3.connect(self.geometadb_path) as conn:
+                cursor = conn.cursor()
+                field_names = [f.name for f in fields(GSE)]
+                headers = ','.join(field_names)
+                gse_tuples = [astuple(gse) for gse in gses]
+                placeholders = ','.join(['?'] * len(field_names))
+                table = 'gse'
+                cursor.executemany(f"INSERT OR REPLACE INTO {table} ({headers}) VALUES ({placeholders})", gse_tuples)
+        except sqlite3.Error:
+            # Just log the exception so as not to fail the whole pipeline.
+            logger.exception("Failed to save GEO datasets to geometadb:")
 
     @staticmethod
     def _format_geoparse_metadata(geoparse_metadata: Dict):
