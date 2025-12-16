@@ -14,3 +14,8 @@ include:
   - name: PyMissingTypeHintsInspection
   - name: PyArgumentListInspection
   - name: PyAugmentAssignmentInspection
+exclude:
+  - name: All
+    paths:
+      - .vscode
+      - .idea
