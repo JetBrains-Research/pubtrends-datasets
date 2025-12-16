@@ -27,6 +27,11 @@ class NCBIGSELoader(GSELoader):
         return gses
 
     def save_gses(self, gses: list[GSE]):
+        """
+        Saves GEO datasets to the geometadb sqlite database.
+
+        :param gses: List of GEO datasets to save.
+        """
         try:
             with sqlite3.connect(self.geometadb_path) as conn:
                 cursor = conn.cursor()
@@ -41,7 +46,13 @@ class NCBIGSELoader(GSELoader):
             logger.exception("Failed to save GEO datasets to geometadb:")
 
     @staticmethod
-    def _format_geoparse_metadata(geoparse_metadata: Dict):
+    def _format_geoparse_metadata(geoparse_metadata: Dict) -> Dict:
+        """
+        Formats the metadata dictionary from GEOparse into a format suitable for
+        creating a GSE object.
+
+        :param geoparse_metadata: Metadata dictionary from GEOparse.
+        """
         metadata_dict = {key: item[0] if isinstance(item, list) and len(item) > 0 else "" for key, item in geoparse_metadata.items()}
         metadata_dict["gse"] = metadata_dict.get("geo_accession", "")
         if "pubmed_id" in metadata_dict:
@@ -53,6 +64,14 @@ class NCBIGSELoader(GSELoader):
 
     @staticmethod
     def _format_contact_info(metadata_dict):
+        """
+        Formats the contact information from GEOparse into a single string
+        in the format used in geometadb.
+        Adds a contact field to the metadata dictionary with the formatted
+        contact info.
+
+        :param metadata_dict: Metadata dictionary from GEOparse.
+        """
         contact_info = []
         if "contact_name" in metadata_dict:
             contact_info.append(f'Name: {metadata_dict["contact_name"]}')
