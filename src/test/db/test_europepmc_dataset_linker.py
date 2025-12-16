@@ -6,6 +6,7 @@ from parameterized import parameterized
 
 from src.db.europepmc_dataset_linker import EuropePMCDatasetLinker
 from src.exception.europepmc_error import EuropePMCError
+from src.test.helpers.http import create_mock_response
 
 MOCK_EUROPEPMC_DATA = [
     {
@@ -26,23 +27,10 @@ MOCK_EUROPEPMC_DATA = [
 
 class TestEuropePMCDatasetLinker(unittest.TestCase):
     def setUp(self):
-        self.mock_europepmc_response = Mock()
-        self.mock_europepmc_response.status_code = 200
-        self.mock_europepmc_response.json.return_value = MOCK_EUROPEPMC_DATA
-
-        self.mock_fail_response = Mock()
-        self.mock_fail_response.status_code = 500
-        self.mock_fail_response.json.return_value = "ERROR"
-        self.mock_fail_response.raise_for_status.side_effect = requests.HTTPError()
-        self.mock_fail_response.raise_for_status.side_effect.response = self.mock_fail_response
-
-        self.mock_empty_response = Mock()
-        self.mock_empty_response.status_code = 400
-        self.mock_empty_response.raise_for_status.side_effect = requests.HTTPError()
-        self.mock_empty_response.raise_for_status.side_effect.response = self.mock_empty_response
-
+        self.mock_europepmc_response = create_mock_response(MOCK_EUROPEPMC_DATA, 200)
+        self.mock_fail_response = create_mock_response("ERROR", 500)
+        self.mock_empty_response = create_mock_response("", 400)
         self.mock_session = Mock()
-
         self.linker = EuropePMCDatasetLinker(http_session=self.mock_session)
 
     @parameterized.expand([

@@ -5,6 +5,7 @@ import requests
 
 from src.db.elink_dataset_linker import ELinkDatasetLinker
 from src.exception.entrez_error import EntrezError
+from src.test.helpers.http import create_mock_response
 
 MOCK_ELINK_DATA = {
     "header": {},
@@ -39,27 +40,16 @@ Series		Accession: GSE54321	ID: 200116672
 
 class TestELinkDatasetLinker(unittest.TestCase):
     def setUp(self):
-        self.mock_elink_response = Mock()
-        self.mock_elink_response.status_code = 200
-        self.mock_elink_response.json.return_value = MOCK_ELINK_DATA
+        self.mock_elink_response = create_mock_response(MOCK_ELINK_DATA, 200)
+        self.mock_fail_response = create_mock_response("ERROR", 500)
+        self.mock_efetch_response = create_mock_response(MOCK_EFETCH_DATA, 200)
 
-        self.mock_fail_response = Mock()
-        self.mock_fail_response.status_code = 500
-        self.mock_fail_response.json.return_value = "ERROR"
-        self.mock_fail_response.raise_for_status.side_effect = requests.HTTPError()
-        self.mock_fail_response.raise_for_status.side_effect.response = self.mock_fail_response
-
-        self.mock_efetch_response = Mock()
-        self.mock_efetch_response.status_code = 200
-        self.mock_efetch_response.text = MOCK_EFETCH_DATA
         self.mock_session = Mock()
 
         self.linker = ELinkDatasetLinker(http_session=self.mock_session)
 
     def test_fetch_geo_ids_success(self):
         self.mock_session.post.return_value = self.mock_elink_response
-
-        self.linker = ELinkDatasetLinker(http_session=self.mock_session)
 
         pubmed_ids = ["112233"]
         result = self.linker._fetch_geo_ids(pubmed_ids)

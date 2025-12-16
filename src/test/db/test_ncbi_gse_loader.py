@@ -9,6 +9,7 @@ from src.config.config import Config
 from src.db.gse import GSE
 from src.db.ncbi_gse_loader import NCBIGSELoader
 from src.exception.geo_error import GEOError
+from src.test.helpers.http import create_mock_response
 
 
 class TestNCBIGSELoader(unittest.TestCase):
@@ -18,22 +19,13 @@ class TestNCBIGSELoader(unittest.TestCase):
 
     @staticmethod
     def _make_ok_response(gse_accession: str):
-        resp = Mock()
-        resp.status_code = 200
-        resp.iter_lines.return_value = iter([f"^SERIES = {gse_accession}", "!Series_title = Title",
-                                             f"!Series_geo_accession = {gse_accession}", f"!Series_pubmed_id = 12345"])
-        resp.raise_for_status.return_value = None
-        return resp
+        geo_response = "\n".join([f"^SERIES = {gse_accession}", "!Series_title = Title",
+                                  f"!Series_geo_accession = {gse_accession}", f"!Series_pubmed_id = 12345"])
+        return create_mock_response(geo_response, 200)
 
     @staticmethod
     def _make_error_response():
-        resp = Mock()
-        resp.status_code = 500
-        resp.iter_lines.return_value = iter(["ERROR"])
-        http_error = requests.HTTPError()
-        http_error.response = resp
-        resp.raise_for_status.side_effect = http_error
-        return resp
+        return create_mock_response("ERROR", 500)
 
     @parameterized.expand([
         (["GSE116672"], ["GSE116672"]),
@@ -47,7 +39,7 @@ class TestNCBIGSELoader(unittest.TestCase):
         executemany_mock = mock_cursor.executemany
         executemany_mock.side_effect = None
         executemany_mock.return_value = None
-        # Prepare responses for each accession
+
         self.mock_session.get.side_effect = [self._make_ok_response(accession) for accession in gse_accessions]
 
         gses: List[GSE] = self.loader.load_gses(gse_accessions)
@@ -60,9 +52,7 @@ class TestNCBIGSELoader(unittest.TestCase):
         self.assertEqual(len(sql_args[1]), len(gse_accessions))
 
     def test_load_gses_http_error(self):
-        err_response = self._make_error_response()
-
-        self.mock_session.get.return_value = err_response
+        self.mock_session.get.return_value = self._make_error_response()
 
         with self.assertRaises(GEOError):
             self.loader.load_gses(["GSE12345"])
@@ -71,9 +61,7 @@ class TestNCBIGSELoader(unittest.TestCase):
 
     def test_load_gses_connection_failure(self):
         req_exc = requests.RequestException()
-        req_exc.response = Mock()
-        req_exc.response.status_code = 408
-
+        req_exc.response = create_mock_response("", 408)
         self.mock_session.get.side_effect = req_exc
 
         with self.assertRaises(GEOError):
