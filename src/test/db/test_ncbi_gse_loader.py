@@ -1,5 +1,4 @@
 import unittest
-from logging import exception
 from typing import List
 from unittest.mock import Mock, patch
 
