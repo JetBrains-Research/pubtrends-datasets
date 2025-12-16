@@ -4,12 +4,14 @@ import requests
 from src.db.paper_dataset_linker import PaperDatasetLinker
 from src.exception.entrez_error import EntrezError
 
+
 class ELinkDatasetLinker(PaperDatasetLinker):
     ELINK_REQUEST_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi"
     EFETCH_REQUEST_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
+
     def __init__(self, http_session: requests.Session):
         self.http_session = http_session
-    
+
     def link_to_datasets(self, pubmed_ids: List[str]) -> List[str]:
         if not pubmed_ids:
             raise ValueError("At least one valid PubMed ID is required")
@@ -19,22 +21,25 @@ class ELinkDatasetLinker(PaperDatasetLinker):
     def _fetch_geo_ids(self, pubmed_ids: List[str]) -> List[str]:
         """
         Fetches GEO dataset ids for papers with the specified PubMed IDs.
+        These IDs cannot be directly used to fetch the datasets themselves but
+        can be translated to GEO accessions, which are then used to fetch the
+        actual datasets.
 
         :param pubmed_ids: List of PubMed IDs to fetch GEO dataset ids for.
         :returns: A list that contains the IDs of the GEO datasets associated with the PubMed IDs.
         """
         try:
             response = self.http_session.post(
-            ELinkDatasetLinker.ELINK_REQUEST_URL,
-            params={
-                "dbfrom": "pubmed",
-                "db": "gds",
-                "linkname": "pubmed_gds",
-                "retmode": "json",
-            },
-            data={
-                "id": ",".join(pubmed_ids),
-            }
+                ELinkDatasetLinker.ELINK_REQUEST_URL,
+                params={
+                    "dbfrom": "pubmed",
+                    "db": "gds",
+                    "linkname": "pubmed_gds",
+                    "retmode": "json",
+                },
+                data={
+                    "id": ",".join(pubmed_ids),
+                }
             )
             response.raise_for_status()
             response = response.json()
@@ -43,7 +48,7 @@ class ELinkDatasetLinker(PaperDatasetLinker):
 
             linksets = response.get("linksets")
             if not linksets:
-                return[]
+                return []
             linkset_dbs = linksets[0].get("linksetdbs")
             if not linkset_dbs:
                 return []
@@ -68,7 +73,7 @@ class ELinkDatasetLinker(PaperDatasetLinker):
             response.raise_for_status()
             geo_summaries = response.text
 
-            # Series are the only type of GEO entry that contain all of the infromation
+            # Series are the only type of GEO entry that contain all the infromation
             # we are looking for. Therefore we need to search for series accessions,
             # which begin with GSE.
             return re.findall("Accession: (GSE\\d+)", geo_summaries)
@@ -76,4 +81,3 @@ class ELinkDatasetLinker(PaperDatasetLinker):
             raise EntrezError(f"EFetch status {e.response.status_code}")
         except requests.RequestException:
             raise EntrezError("Network error during EFetch API call")
-
