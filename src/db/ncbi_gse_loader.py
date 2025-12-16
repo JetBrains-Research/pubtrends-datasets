@@ -14,9 +14,11 @@ from src.exception.geo_error import GEOError
 
 logger = logging.getLogger(__name__)
 
+
 class NCBIGSELoader(GSELoader):
     DOWNLOAD_URL_TEMPLATE = "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={}&targ=self&form=text&view=quick"
     GEOMETADB_SEPARATOR = ";\t"
+
     def __init__(self, session: requests.Session, config: Config) -> None:
         self.session = session
         self.geometadb_path = config.geometadb_path
@@ -53,7 +55,8 @@ class NCBIGSELoader(GSELoader):
 
         :param geoparse_metadata: Metadata dictionary from GEOparse.
         """
-        metadata_dict = {key: item[0] if isinstance(item, list) and len(item) > 0 else "" for key, item in geoparse_metadata.items()}
+        metadata_dict = {key: item[0] if isinstance(item, list) and len(item) > 0 else "" for key, item in
+                         geoparse_metadata.items()}
         metadata_dict["gse"] = metadata_dict.get("geo_accession", "")
         if "pubmed_id" in metadata_dict:
             metadata_dict["pubmed_id"] = int(metadata_dict["pubmed_id"])

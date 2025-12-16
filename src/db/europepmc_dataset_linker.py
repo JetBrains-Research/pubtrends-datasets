@@ -27,7 +27,7 @@ class EuropePMCDatasetLinker(PaperDatasetLinker):
             raise ValueError("At least one valid PubMed ID is required")
         batch_size = EuropePMCDatasetLinker.BATCH_SIZE
         batches = [
-            pubmed_ids[i : i + batch_size]
+            pubmed_ids[i: i + batch_size]
             for i in range(0, len(pubmed_ids), batch_size)
         ]
         accession_batches = (
@@ -72,4 +72,3 @@ class EuropePMCDatasetLinker(PaperDatasetLinker):
             raise EuropePMCError("Network error during EuropePMC API call")
         except KeyError:
             raise EuropePMCError("Malformed response from EuropePMC API")
-            

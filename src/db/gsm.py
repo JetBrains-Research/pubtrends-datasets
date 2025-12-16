@@ -7,7 +7,7 @@ from typing import Optional
 @dataclass
 class GSM:
     """Gene Expression Omnibus Sample (GSM) data model."""
-    
+
     ID: Optional[float] = None
     title: Optional[str] = None
     gsm: Optional[str] = None
@@ -40,4 +40,3 @@ class GSM:
     supplementary_file: Optional[str] = None
     data_row_count: Optional[float] = None
     channel_count: Optional[float] = None
-

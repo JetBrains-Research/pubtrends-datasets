@@ -41,8 +41,10 @@ logging.basicConfig(filename=logfile,
 
 logger = app.logger
 
+
 def log_request(r):
     return f'addr:{r.remote_addr} args:{json.dumps(r.args)}'
+
 
 @app.route('/datasets', methods=['GET'])
 def get_datasets():
@@ -91,38 +93,38 @@ def get_datasets():
     """
     logger.info(f'/datasets {log_request(request)}')
     pubmed_ids_param = request.args.get('pubmed_ids', '')
-    
+
     if not pubmed_ids_param:
         logger.error(f'/datasets error {log_request(request)}')
         return jsonify({"error": "pubmed_ids parameter is required"}), 400
-    
+
     pubmed_ids = [pid.strip() for pid in pubmed_ids_param.split(',') if pid.strip()]
-    
+
     if not pubmed_ids:
         return jsonify({"error": "At least one valid PubMed ID is required"}), 400
-    
+
     try:
         with requests.Session() as http_session:
-          europepmc_dataset_linker = EuropePMCDatasetLinker(http_session)
-          elink_dataset_linker = ELinkDatasetLinker(http_session)
-          dataset_linker = ChainedDatasetLinker(elink_dataset_linker, europepmc_dataset_linker)
-          gse_accessions = dataset_linker.link_to_datasets(pubmed_ids)
-          gse_accessions = list(filter(lambda acc: acc.startswith("GSE"), gse_accessions))
-          
-          if not gse_accessions:
-              return jsonify([])
-          
-          # Load the GSE objects using a chain: GEOmetadb first, then NCBI for missing ones
-          chained_loader = ChainedGSELoader(
-              geometadb_gse_loader,
-              NCBIGSELoader(http_session, CONFIG)
-          )
-          gse_objects = chained_loader.load_gses(gse_accessions)
-          
-          result = [asdict(gse) for gse in gse_objects]
-          
-          return jsonify(result)
-    
+            europepmc_dataset_linker = EuropePMCDatasetLinker(http_session)
+            elink_dataset_linker = ELinkDatasetLinker(http_session)
+            dataset_linker = ChainedDatasetLinker(elink_dataset_linker, europepmc_dataset_linker)
+            gse_accessions = dataset_linker.link_to_datasets(pubmed_ids)
+            gse_accessions = list(filter(lambda acc: acc.startswith("GSE"), gse_accessions))
+
+            if not gse_accessions:
+                return jsonify([])
+
+            # Load the GSE objects using a chain: GEOmetadb first, then NCBI for missing ones
+            chained_loader = ChainedGSELoader(
+                geometadb_gse_loader,
+                NCBIGSELoader(http_session, CONFIG)
+            )
+            gse_objects = chained_loader.load_gses(gse_accessions)
+
+            result = [asdict(gse) for gse in gse_objects]
+
+            return jsonify(result)
+
     except Exception as e:
         logger.exception(f'/datasets exception {e}')
         return jsonify({"error": str(e)}), 500
@@ -130,4 +132,3 @@ def get_datasets():
 
 if __name__ == '__main__':
     app.run(debug=True)
-

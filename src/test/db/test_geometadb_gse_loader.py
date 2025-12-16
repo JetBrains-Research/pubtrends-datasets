@@ -7,6 +7,7 @@ from typing import List
 from src.db.gse import GSE
 from src.test.db.test_datasets import TEST_GSEs
 
+
 class TestGEOmetadbGSELoader(unittest.TestCase):
     def setUp(self):
         self.test_config = Config(test=True)
