@@ -1,6 +1,16 @@
 version: "1.0"
-
 profile:
   name: qodana.starter
 
 linter: jetbrains/qodana-python:2025.2
+include:
+  - name: DuplicatedCode
+  - name: EmptyDirectory
+  - name: InconsistentLineSeparators
+  - name: IncorrectFormatting
+  - name: ProblematicWhitespace
+  - name: PyPandasSeriesToListInspection
+  - name: PyPandasTruthValueIsAmbiguousInspection
+  - name: PyMissingTypeHintsInspection
+  - name: PyArgumentListInspection
+  - name: PyAugmentAssignmentInspection
