@@ -22,13 +22,12 @@ rm -f ~/geodatasets/testgeometadb.sqlite
 sqlite3 ~/geodatasets/testgeometadb.sqlite < src/test/db/testgeometadb.sql
 
 echo '3. Setting up GEOmetadb SQLite database'
-read -p "Do you want to download GEOmetadb (D) or provide path to existing file (P)? [D/P]: " choice
+read -rp "Do you want to download GEOmetadb (D) or provide path to an existing GEOmetadb file (P)? [D/P]: " choice
 if [[ $choice == "P" || $choice == "p" ]]; then
     while true; do
-        read -p "Enter path to existing GEOmetadb file: " geometadb_path
+        read -rp "Enter path to existing GEOmetadb file: " geometadb_path
         geometadb_path="${geometadb_path/#~/$HOME}"
-        echo $geometadb_path
-        if [ -f $geometadb_path ]; then
+        if [ -f "$geometadb_path" ]; then
             if file "$geometadb_path" | grep -q "sqlite"; then
                 break
             else
@@ -39,13 +38,12 @@ if [[ $choice == "P" || $choice == "p" ]]; then
         fi
     done
 else
-    read -p "Enter installation path or press Enter for default (~/geodatasets/geometadb.sqlite): " install_path
-    if [ -z "$install_path" ]; then
-        install_path=~/geodatasets/geometadb.sqlite
+    read -rp "Enter installation path or press Enter for default (~/geodatasets/geometadb.sqlite): " geometadb_path
+    if [ -z "$geometadb_path" ]; then
+        geometadb_path=~/geodatasets/geometadb.sqlite
     fi
-    wget -O "${install_path}.gz" "$GEOMETADB_DOWNLOAD_LINK"
-    gunzip "${install_path}.gz"
-    geometadb_path=$install_path
+    wget -O "${geometadb_path}.gz" "$GEOMETADB_DOWNLOAD_LINK"
+    gunzip "${geometadb_path}.gz"
 fi
 sed -i "s|^geometadb_path = .*|geometadb_path = ${geometadb_path}|" config.properties
 
