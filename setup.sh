@@ -17,9 +17,11 @@ fi
 conda activate pubtrends_datasets
 
 echo '2. Generating test sample of GEOmetadb'
+test_geometadb_path=~/geodatasets/testgeometadb.sqlite
 mkdir -p ~/geodatasets
-rm -f ~/geodatasets/testgeometadb.sqlite
-sqlite3 ~/geodatasets/testgeometadb.sqlite < src/test/db/testgeometadb.sql
+rm -f "$test_geometadb_path"
+sqlite3 "$test_geometadb_path" < src/test/db/testgeometadb.sql
+sed -i "s|^test_geometadb_path\\s*=\\s*.*|test_geometadb_path=${test_geometadb_path}|" config.properties
 
 echo '3. Setting up GEOmetadb SQLite database'
 read -rp "Do you want to download GEOmetadb (D) or provide path to an existing GEOmetadb file (P)? [D/P]: " choice
