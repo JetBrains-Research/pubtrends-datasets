@@ -36,10 +36,3 @@ def _set_mock_response_body(data: dict | list | str, mock_response: Mock):
         mock_response.json.return_value = data
 
     mock_response.iter_lines.return_value = str(mock_response.text).split("\n")
-
-
-def create_mock_connection_error_response() -> requests.Response:
-    mock_response = create_mock_response("", 408)
-    mock_response.raise_for_status.side_effect = requests.RequestException()
-    mock_response.raise_for_status.side_effect.response = mock_response
-    return mock_response
