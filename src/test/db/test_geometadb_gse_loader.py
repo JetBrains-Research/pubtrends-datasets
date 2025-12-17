@@ -4,7 +4,9 @@ from src.db.geometadb_gse_loader import GEOmetadbGSELoader
 from parameterized import parameterized
 from typing import List
 
+from src.db.gse import GSE
 from src.test.db.test_datasets import TEST_GSEs
+
 
 class TestGEOmetadbGSELoader(unittest.TestCase):
     def setUp(self):
@@ -13,6 +15,7 @@ class TestGEOmetadbGSELoader(unittest.TestCase):
 
     @parameterized.expand([
         (["GSE116672"], [TEST_GSEs[0]]),
+        ([], []),
         ([TEST_GSEs[0].gse, TEST_GSEs[1].gse], [TEST_GSEs[0], TEST_GSEs[1]]),
     ])
     def test_load_gses(self, gse_accessions: List[str], expected_gses: List[GSE]):

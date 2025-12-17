@@ -2,6 +2,7 @@ from abc import ABCMeta
 from abc import abstractmethod
 from typing import List
 
+
 class PaperDatasetLinker(metaclass=ABCMeta):
     @abstractmethod
     def link_to_datasets(self, pubmed_ids: List[str]) -> List[str]:
