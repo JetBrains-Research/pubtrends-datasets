@@ -47,7 +47,7 @@ else
     wget -O "${geometadb_path}.gz" "$GEOMETADB_DOWNLOAD_LINK"
     gunzip "${geometadb_path}.gz"
 fi
-sed -i "s|^geometadb_path = .*|geometadb_path = ${geometadb_path}|" config.properties
+sed -i "s|^geometadb_path\\s*=\\s*.*|geometadb_path=${geometadb_path}|" config.properties
 
 echo '4. Creating ~/.pubtrends-datasets directory'
 mkdir -p ~/.pubtrends-datasets/logs
