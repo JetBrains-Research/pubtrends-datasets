@@ -2,7 +2,7 @@ FROM python:3.14-slim-bookworm
 COPY --from=docker.io/astral/uv:latest /uv /uvx /bin/
 RUN DEBIAN_FRONTEND="noninteractive" apt update --fix-missing \
     && apt-get install --no-install-recommends -y \
-        sqlite3 curl sudo \
+        curl \
     && apt-get clean \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
