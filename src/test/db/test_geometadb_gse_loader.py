@@ -8,10 +8,14 @@ from src.db.gse import GSE
 from src.test.db.test_datasets import TEST_GSEs
 
 
+from src.db.gse_repository import GSERepository
+
+
 class TestGEOmetadbGSELoader(unittest.TestCase):
     def setUp(self):
         self.test_config = Config(test=True)
-        self.GEOmetadb_gse_loader = GEOmetadbGSELoader(self.test_config)
+        self.repository = GSERepository(self.test_config.geometadb_path)
+        self.GEOmetadb_gse_loader = GEOmetadbGSELoader(self.repository)
 
     @parameterized.expand([
         (["GSE116672"], [TEST_GSEs[0]]),
