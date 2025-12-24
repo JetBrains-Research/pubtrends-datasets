@@ -1,6 +1,6 @@
 #!/bin/bash
 # At the time of writing, the Wayback Machine link is faster than the official link
-GEOMETADB_DOWNLOAD_LINK='https://web.archive.org/web/20250222142049/https://gbnci.cancer.gov/geo/GEOmetadb.sqlite.gz'
+GEOMETADB_DOWNLOAD_LINK='https://gbnci.cancer.gov/geo/GEOmetadb.sqlite.gz'
 
 
 echo '1. Setting up environment'
@@ -8,7 +8,7 @@ uv sync
 
 echo '2. Generating test sample of GEOmetadb'
 ./scripts/create_test_sample.sh src/test/db/testgeometadb.sql
-sed -i "s|^test_geometadb_path\\s*=\\s*.*|test_geometadb_path=${test_geometadb_path}|" config.properties
+sed -i "s|^test_geometadb_path\\s*=\\s*.*|test_geometadb_path = ${test_geometadb_path}|" config.properties
 
 echo '3. Setting up GEOmetadb SQLite database'
 read -rp "Do you want to download GEOmetadb (D) or provide path to an existing GEOmetadb file (P)? [D/P]: " choice
@@ -31,12 +31,25 @@ else
     if [ -z "$geometadb_path" ]; then
         geometadb_path=~/geodatasets/geometadb.sqlite
     fi
-    wget -O "${geometadb_path}.gz" "$GEOMETADB_DOWNLOAD_LINK"
+    wget -nc -O "${geometadb_path}.gz" "$GEOMETADB_DOWNLOAD_LINK"
     gunzip "${geometadb_path}.gz"
 fi
-sed -i "s|^geometadb_path\\s*=\\s*.*|geometadb_path=${geometadb_path}|" config.properties
+sed -i "s|^geometadb_path\\s*=\\s*.*|geometadb_path = ${geometadb_path}|" config.properties
 
 echo '4. Creating ~/.pubtrends-datasets directory'
 mkdir -p ~/.pubtrends-datasets/logs
+
+echo '5. Configuring dataset download'
+default_dataset_download_folder="$(dirname $geometadb_path)/soft_files"
+read -rp "Enter the path to the folder where you would like to download new GEO datasets (default: $default_dataset_download_folder):" dataset_path
+if [ -z "$dataset_path" ]; then
+    dataset_path="$default_dataset_download_folder"
+fi
+dataset_path="${dataset_path/#~/$HOME}"
+if [ ! -d "$dataset_path" ]; then
+    mkdir -p "$dataset_path"
+fi
+sed -i "s|^dataset_download_folder\\s*=\\s*.*|dataset_download_folder = ${dataset_path}|" config.properties
+
 echo 'Setup finished'
 echo 'Please copy the config.properties file to ~/.pubtrends-datasets before running the app'
