@@ -14,7 +14,7 @@ from tenacity import retry, stop_after_attempt
 
 from src.config.config import Config
 from src.db.geoparse_to_geometadb import format_geoparse_metadata
-from src.db.get_geo_acessions_for_dates import get_geo_ids
+from src.db.get_geo_accessions_for_dates import get_geo_ids
 from src.db.gse import GSE
 from src.db.gse_repository import GSERepository
 from src.helpers.is_gzip_vaild import is_gzip_valid
@@ -160,7 +160,8 @@ if __name__ == '__main__':
         'end_date',
         type=lambda s: datetime.datetime.strptime(s, '%Y-%m-%d'),
         default=datetime.datetime.now(),
-        help='End date for the date range to download datasets from (inclusive). Defaults to today.'
+        help='End date for the date range to download datasets from (inclusive). Defaults to today.',
+        nargs='?'
     )
     args = parser.parse_args()
 
