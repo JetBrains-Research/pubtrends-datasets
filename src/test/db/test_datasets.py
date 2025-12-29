@@ -3,7 +3,6 @@
 from src.db.gse import GSE
 from src.db.gsm import GSM
 
-
 TEST_GSEs = [
     GSE(
         ID=110771.0,
