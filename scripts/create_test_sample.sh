@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ $# -eq 0 ]; then
-    echo "Error: Input file path is required"
+    echo "Error: Test database dump path is required"
     exit 1
 fi
 
