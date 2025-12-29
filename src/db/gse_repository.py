@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import sqlite3
 from dataclasses import fields, astuple
 from typing import List
@@ -14,6 +15,27 @@ logger = logging.getLogger(__name__)
 class GSERepository:
     def __init__(self, geometadb_path: str) -> None:
         self.geometadb_path = geometadb_path
+        if not os.path.isfile(self.geometadb_path):
+            raise RuntimeError(f"Geometadb file {self.geometadb_path} does not exist")
+        if not os.access(self.geometadb_path, os.W_OK):
+            raise RuntimeError(f"Geometadb file {self.geometadb_path} is not writable")
+        self.check_geometadb_integrity()
+
+
+    def check_geometadb_integrity(self):
+        """
+        Checks if the geometadb sqlite database is corrupted.
+        Raises a RuntimeError if the database is corrupted.
+        """
+        try:
+            with sqlite3.connect(self.geometadb_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("PRAGMA integrity_check;")
+                result = cursor.fetchone()
+                if not result or result[0] != "ok":
+                    raise RuntimeError("Geometadb file is corrupted")
+        except sqlite3.Error:
+            raise RuntimeError("Geometadb file is corrupted")
 
     def save_gses(self, gses: List[GSE]) -> None:
         """
