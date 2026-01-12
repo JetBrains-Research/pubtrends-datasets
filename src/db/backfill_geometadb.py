@@ -18,7 +18,7 @@ from src.db.get_geo_accessions_for_dates import get_geo_ids
 from src.db.gse import GSE
 from src.db.gse_repository import GSERepository
 from src.helpers.is_gzip_vaild import is_gzip_valid
-from src.helpers.remove_if_exists import remove_if_exists
+from src.helpers.remove_if_exists import async_remove_if_exists
 
 GEO_FTP_HOST = "ftp.ncbi.nlm.nih.gov"
 logger = logging.getLogger(__name__)
@@ -85,11 +85,11 @@ class GEOmetadbBackfiller():
                         raise gzip.BadGzipFile("Downloaded file is not a valid gzip file")
             except (aiohttp.ClientResponseError, aiohttp.ClientConnectionError, asyncio.TimeoutError) as e:
                 logger.exception(f"Network error downloading {url}: {e}")
-                remove_if_exists(download_path)
+                await async_remove_if_exists(download_path)
                 raise e
             except Exception as e:
                 logger.exception(f"Unexpected error saving {url} to {download_path}: {e}")
-                remove_if_exists(download_path)
+                await async_remove_if_exists(download_path)
                 raise e
 
 
@@ -136,14 +136,10 @@ class GEOmetadbBackfiller():
 
         with ProcessPoolExecutor(pool_size) as executor:
             async with aiohttp.ClientSession(raise_for_status=True) as session:
-                for i in range(0, len(gse_accessions), batch_size):
-                    batch = gse_accessions[i:i + batch_size]
-                    tasks = [self.download_dataset(acc, executor, session) for acc in batch]
-                    results = await asyncio.gather(*tasks, return_exceptions=ignore_failures)
-                    all_results.extend([gse for gse in results if not isinstance(gse, Exception)])
-                    logger.info(f"Processed batch {i // batch_size + 1}")
-        
-        return all_results
+                tasks = [self.download_dataset(acc, executor, session) for acc in gse_accessions]
+                results = await asyncio.gather(*tasks, return_exceptions=ignore_failures)
+                return [gse for gse in results if not isinstance(gse, Exception)]
+
 
 if __name__ == '__main__':
     import logging
