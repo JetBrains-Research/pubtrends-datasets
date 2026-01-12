@@ -22,7 +22,6 @@ def url_open(url, timeout=2, n_trials=5, sleep_time=2):
         except URLError as e:
             latest_exception = e
             time.sleep(sleep_time)
-    print(url)
     raise latest_exception
 
 def get_geo_ids(start_date: datetime.date, end_date: datetime.date) -> list:
