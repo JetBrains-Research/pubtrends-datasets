@@ -80,7 +80,8 @@ class GEOmetadbBackfiller():
                 logger.info(f"Downloading: {url}")
                 async with session.get(url) as response:
                     async with aiofiles.open(download_path, mode='wb') as dataset_archive:
-                        await dataset_archive.write(await response.read())
+                        async for chunk in response.content.iter_chunked(1024*1024):
+                            await dataset_archive.write(chunk)
                     if not await is_gzip_valid(download_path):
                         raise gzip.BadGzipFile("Downloaded file is not a valid gzip file")
             except (aiohttp.ClientResponseError, aiohttp.ClientConnectionError, asyncio.TimeoutError) as e:
