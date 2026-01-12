@@ -1,7 +1,9 @@
 from typing import Dict
 from GEOparse import GSE
+import logging
 
 GEOMETADB_SEPARATOR = ";\t"
+logger = logging.getLogger(__name__)
 
 def get_geometadb_dict(geoparse_gse: GSE) -> Dict:
     return format_geoparse_metadata(geoparse_gse.metadata)
@@ -17,7 +19,10 @@ def format_geoparse_metadata(geoparse_metadata: Dict) -> Dict:
                      geoparse_metadata.items()}
     metadata_dict["gse"] = metadata_dict.get("geo_accession", "")
     if "pubmed_id" in metadata_dict:
-        metadata_dict["pubmed_id"] = int(metadata_dict["pubmed_id"])
+        try:
+            metadata_dict["pubmed_id"] = int(metadata_dict["pubmed_id"])
+        except ValueError:
+            logger.warning(f"Invalid PubMed ID: {metadata_dict['pubmed_id']}")
     format_contact_info(metadata_dict)
     if "contributor" in geoparse_metadata:
         metadata_dict["contributor"] = GEOMETADB_SEPARATOR.join(geoparse_metadata["contributor"])

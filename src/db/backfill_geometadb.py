@@ -61,20 +61,10 @@ class GEOmetadbBackfiller():
         await self.download_gse_file(download_path, session, url)
 
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(executor, GEOmetadbBackfiller.parse_dataset, download_path)
-        await self.write_to_db(result)
-        logger.info(f"Downloaded and saved dataset {gse_accession}")
-        return result
-
-    @retry(stop=stop_after_attempt(3))
-    async def write_to_db(self, geo: GEOparse.GSE):
-        """
-        Converts a GEOparse GSE object to the geometadb GSE model and saves it.
-        :param geo: GEOparse GSE object.
-        """
-        gse = from_dict(GSE, format_geoparse_metadata(geo.metadata))
+        gse = await loop.run_in_executor(executor, GEOmetadbBackfiller.parse_dataset, download_path)
         await self.repository.save_gses_async([gse])
-
+        logger.info(f"Downloaded and saved dataset {gse_accession}")
+        return gse
 
     @retry(stop=stop_after_attempt(3))
     async def download_gse_file(self, download_path: str, session: aiohttp.ClientSession, url: str):
@@ -105,16 +95,17 @@ class GEOmetadbBackfiller():
 
     @staticmethod
     @retry(stop=stop_after_attempt(3))
-    def parse_dataset(gzip_path: str) -> GEOparse.GSE:
+    def parse_dataset(gzip_path: str) -> GSE:
         """
-        Parses a GEO dataset archive and returns a GEOparse GSE object.
+        Parses a GEO dataset archive and returns a GSE object.
 
         :param gzip_path: Path to the gzip archive of the dataset.
         :return: GEOparse GSE object.
         """
         try:
             geo = GEOparse.get_GEO(filepath=gzip_path, silent=True)
-            return geo
+            gse = from_dict(GSE, format_geoparse_metadata(geo.metadata))
+            return gse
         except Exception as e:
             logger.exception(f"Error parsing GEO dataset archive {gzip_path}")
             raise e
@@ -140,11 +131,19 @@ class GEOmetadbBackfiller():
         :return: List of successfully downloaded GEO datasets.
         """
         pool_size = self.dataset_parser_workers
+        batch_size = 500
+        all_results = []
+
         with ProcessPoolExecutor(pool_size) as executor:
             async with aiohttp.ClientSession(raise_for_status=True) as session:
-                results = await asyncio.gather(
-                    *(self.download_dataset(gse_accession, executor, session) for gse_accession in gse_accessions), return_exceptions=ignore_failures)
-        return [gse for gse in results if isinstance(gse, GSE)]
+                for i in range(0, len(gse_accessions), batch_size):
+                    batch = gse_accessions[i:i + batch_size]
+                    tasks = [self.download_dataset(acc, executor, session) for acc in batch]
+                    results = await asyncio.gather(*tasks, return_exceptions=ignore_failures)
+                    all_results.extend([gse for gse in results if not isinstance(gse, Exception)])
+                    logger.info(f"Processed batch {i // batch_size + 1}")
+        
+        return all_results
 
 if __name__ == '__main__':
     import logging
