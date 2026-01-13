@@ -176,6 +176,12 @@ class GEOmetadbBackfiller():
                 datasets = await tqdm_gather(*tasks,
                                              return_exceptions=ignore_failures) if self.show_progress else await asyncio.gather(
                     *tasks, return_exceptions=ignore_failures)
+            if not ignore_failures:
+                return datasets
+
+            for gse in datasets:
+                if isinstance(gse, Exception):
+                    logger.error(f"Failed to download dataset: {gse}")
             return [gse for gse in datasets if not isinstance(gse, Exception)]
 
 
