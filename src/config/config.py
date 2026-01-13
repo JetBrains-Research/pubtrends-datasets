@@ -32,6 +32,7 @@ class Config:
             os.makedirs(self.dataset_download_folder)
         elif not os.path.isdir(self.dataset_download_folder):
             raise RuntimeError(f"{self.dataset_download_folder} is not a directory")
+        self.show_backfill_progress = params.getboolean('show_backfill_progress') if not test else False
 
     @staticmethod
     def _parse_positive_int(params, key):

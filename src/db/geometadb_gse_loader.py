@@ -1,6 +1,5 @@
 from typing import List
 
-from src.config.config import Config
 from src.db.gse import GSE
 from src.db.gse_loader import GSELoader
 from src.db.gse_repository import GSERepository

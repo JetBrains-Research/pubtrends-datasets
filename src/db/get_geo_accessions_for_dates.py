@@ -2,6 +2,7 @@ import re
 import time
 import xml.etree.ElementTree as ET
 import datetime
+from typing import List
 from urllib.request import urlopen, URLError
 
 
@@ -24,9 +25,9 @@ def url_open(url, timeout=2, n_trials=5, sleep_time=2):
             time.sleep(sleep_time)
     raise latest_exception
 
-def get_geo_ids(start_date: datetime.date, end_date: datetime.date) -> list:
+def get_geo_ids_batch(start_date: datetime.date, end_date: datetime.date) -> List[str]:
     """
-    Find GSE which were published during given period.
+    Find GSE which were published during given period, but up to 50000 GSEs per request.
     :param start_date: date from which you want to search gse ids (e.g., "2019/12/02")
     :param end_date: date until you want to search gse ids (e.g., "2019/12/05")
     :return: GSE ids corresponding to request
@@ -43,8 +44,27 @@ def get_geo_ids(start_date: datetime.date, end_date: datetime.date) -> list:
         gse_ids.append(gds_pattern.sub('GSE', elem.text))
     return gse_ids
 
+def get_geo_ids(start_date: datetime.date, end_date: datetime.date) -> List[str]:
+    """
+    Find GSE which were published during given period.
+    :param start_date: date from which you want to search gse ids (e.g., "2019/12/02")
+    :param end_date: date until you want to search gse ids (e.g., "2019/12/05")
+    :return: GSE ids corresponding to request
+    """
+    gse_ids = []
+    date_batches = []
+    batch_interval = datetime.timedelta(days=90)
+    while start_date <= end_date:
+        date_batches.append((start_date, min(start_date + batch_interval, end_date)))
+        start_date += batch_interval
+    for start_date, end_date in date_batches:
+        gse_ids.extend(get_geo_ids_batch(start_date, end_date))
+    return gse_ids
+
+
+
 
 if __name__ == "__main__":
-    ids = get_geo_ids(datetime.date(2025, 10, 1), datetime.date(2025, 10, 3))
+    ids = get_geo_ids_batch(datetime.date(2025, 10, 1), datetime.date(2025, 10, 3))
     for geo_id in ids:
         print(f"ftp://ftp.ncbi.nlm.nih.gov/geo/series/{geo_id[:-3]}nnn/{geo_id}/soft/{geo_id}_family.soft.gz")

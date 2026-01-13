@@ -18,6 +18,7 @@ from src.db.geometadb_gse_loader import GEOmetadbGSELoader
 from src.db.ncbi_gse_loader import NCBIGSELoader
 from src.db.chained_gse_loader import ChainedGSELoader
 from src.db.gse_repository import GSERepository
+from src.config.configure_log_file import configure_log_file
 
 app = Flask(__name__)
 swagger = Swagger(app, template=swagger_template)
@@ -26,20 +27,7 @@ CONFIG = Config(test=False)
 repository = GSERepository(CONFIG.geometadb_path)
 geometadb_gse_loader = GEOmetadbGSELoader(repository)
 
-# Deployment and development
-LOG_PATHS = ['/logs', os.path.expanduser('~/.pubtrends-datasets/logs')]
-for p in LOG_PATHS:
-    if os.path.isdir(p):
-        logfile = os.path.join(p, 'app.log')
-        break
-else:
-    raise RuntimeError('Failed to configure main log file')
-
-logging.basicConfig(filename=logfile,
-                    filemode='a',
-                    format='[%(asctime)s,%(msecs)03d: %(levelname)s/%(name)s] %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S',
-                    level=logging.INFO)
+configure_log_file()
 
 logger = app.logger
 

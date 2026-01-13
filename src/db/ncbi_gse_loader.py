@@ -5,7 +5,6 @@ import GEOparse
 import requests
 from dacite import from_dict
 
-from src.config.config import Config
 from src.db.geoparse_to_geometadb import format_geoparse_metadata
 from src.db.gse import GSE
 from src.db.gse_loader import GSELoader
