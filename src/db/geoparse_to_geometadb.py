@@ -23,6 +23,7 @@ def format_geoparse_metadata(geoparse_metadata: Dict) -> Dict:
             metadata_dict["pubmed_id"] = int(metadata_dict["pubmed_id"])
         except ValueError:
             logger.warning(f"Invalid PubMed ID: {metadata_dict['pubmed_id']}")
+            metadata_dict["pubmed_id"] = None
     format_contact_info(metadata_dict)
     if "contributor" in geoparse_metadata:
         metadata_dict["contributor"] = GEOMETADB_SEPARATOR.join(geoparse_metadata["contributor"])

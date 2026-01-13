@@ -1,10 +1,10 @@
 import errno
-import os
 from pathlib import Path
 from typing import Union
 
 import aiofiles
 import aiofiles.os
+
 
 async def async_file_exists(path: Union[Path, str]) -> bool:
     """

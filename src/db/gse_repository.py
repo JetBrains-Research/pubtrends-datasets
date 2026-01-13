@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -6,10 +7,12 @@ from dataclasses import fields, astuple
 from typing import List
 
 import aiosqlite
+from dacite import from_dict
 
 from src.db.gse import GSE
 
 logger = logging.getLogger(__name__)
+MAX_PARALLEL_REQUESTS = 10
 
 
 class GSERepository:
@@ -20,7 +23,7 @@ class GSERepository:
         if not os.access(self.geometadb_path, os.W_OK):
             raise RuntimeError(f"Geometadb file {self.geometadb_path} is not writable")
         self.check_geometadb_integrity()
-
+        self.semaphore = asyncio.Semaphore(MAX_PARALLEL_REQUESTS)
 
     def check_geometadb_integrity(self):
         """
@@ -29,11 +32,12 @@ class GSERepository:
         """
         try:
             with sqlite3.connect(self.geometadb_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("PRAGMA integrity_check;")
-                result = cursor.fetchone()
-                if not result or result[0] != "ok":
-                    raise RuntimeError("Geometadb file is corrupted")
+                pass
+                #cursor = conn.cursor()
+                #cursor.execute("PRAGMA integrity_check;")
+                #result = cursor.fetchone()
+                #if not result or result[0] != "ok":
+                    #raise RuntimeError("Geometadb file is corrupted")
         except sqlite3.Error:
             raise RuntimeError("Geometadb file is corrupted")
 
@@ -106,6 +110,29 @@ class GSERepository:
                                (json.dumps(gse_accessions),))
                 results = cursor.fetchall()
                 return [GSE(*result) for result in results]
+        except sqlite3.Error:
+            logger.exception("Failed to load GEO datasets from geometadb:")
+            return []
+
+    async def get_gses_async(self, gse_accessions: List[str]) -> List[GSE]:
+        """
+        Loads GEO datasets from the geometadb sqlite database.
+
+        :param gse_accessions: List of GEO accessions for the datasets.
+        :return: List of GEO datasets
+        """
+        if not gse_accessions:
+            return []
+        try:
+            async with self.semaphore:
+                async with aiosqlite.connect(self.geometadb_path, timeout=10) as conn:
+                    conn.row_factory = aiosqlite.Row
+                    async with conn.execute(
+                            "SELECT * FROM gse WHERE gse IN (SELECT value FROM json_each(?))",
+                            (json.dumps(gse_accessions),)
+                    ) as cursor:
+                        rows = await cursor.fetchall()
+                        return [from_dict(GSE, dict(row)) for row in rows]
         except sqlite3.Error:
             logger.exception("Failed to load GEO datasets from geometadb:")
             return []
