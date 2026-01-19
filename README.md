@@ -38,7 +38,7 @@ The API documentation is available at `http://localhost:5002/apidocs`.
 
 1. Build the docker image for testing:
 ```aiignore
-docker build -f resources/docker/test/Dockerfile -t biolabs/pubtrends-datasets-test .
+docker build -f resources/docker/test/Dockerfile -t biolabs/pubtrends-datasets-test --platform linux/amd64 .
 ```
 
 2. Run the tests:
