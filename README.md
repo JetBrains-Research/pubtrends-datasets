@@ -49,5 +49,5 @@ docker run --rm --platform linux/amd64 \
 --volume=$(pwd)/pyproject.toml:/pubtrends-datasets/pyproject.toml \
 --volume=$(pwd)/uv.lock:/pubtrends-datasets/uv.lock \
 -i -t biolabs/pubtrends-datasets-test \
-/bin/bash -c "cd /pubtrends-datasets; uv sync --locked; uv run pytest src"
+/bin/bash -c "cd /pubtrends-datasets; uv sync --locked; uv run python -m unittest discover src/test"
 ```
