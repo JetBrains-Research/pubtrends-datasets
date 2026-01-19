@@ -2,25 +2,12 @@
 # At the time of writing, the Wayback Machine link is faster than the official link
 GEOMETADB_DOWNLOAD_LINK='https://web.archive.org/web/20250222142049/https://gbnci.cancer.gov/geo/GEOmetadb.sqlite.gz'
 
-# conda init
-conda_install_path=$(conda info | grep -i 'base environment' | awk '{print $4}')
-source $conda_install_path/etc/profile.d/conda.sh
 
-echo '1. Setting up conda environment'
-if conda env list | grep -q "pubtrends_datasets"; then
-    echo "Environment exists, updating..."
-    conda env update -f environment.yml
-else
-    echo "Creating new environment..."
-    conda env create -f environment.yml
-fi
-conda activate pubtrends_datasets
+echo '1. Setting up environment'
+uv sync
 
 echo '2. Generating test sample of GEOmetadb'
-test_geometadb_path=~/geodatasets/testgeometadb.sqlite
-mkdir -p ~/geodatasets
-rm -f "$test_geometadb_path"
-sqlite3 "$test_geometadb_path" < src/test/db/testgeometadb.sql
+./scripts/create_test_sample.sh src/test/db/testgeometadb.sql
 sed -i "s|^test_geometadb_path\\s*=\\s*.*|test_geometadb_path=${test_geometadb_path}|" config.properties
 
 echo '3. Setting up GEOmetadb SQLite database'
