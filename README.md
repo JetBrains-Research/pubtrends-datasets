@@ -8,7 +8,7 @@ Datasets integration for PubTrends
 ## Prerequisites
 
 - Python 3
-- Conda
+- uv
 
 ## Setup instructions
 
