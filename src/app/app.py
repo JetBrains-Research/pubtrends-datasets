@@ -1,22 +1,28 @@
 """Flask application for GEOmetadb dataset queries."""
 
-from dataclasses import asdict
-from flask import Flask, request, jsonify
-import os
-import logging
 import json
+import logging
+import os
+from dataclasses import asdict
+
+import requests
 from flasgger import Swagger
-from src.db.geometadb_dataset_linker import GEOmetadbDatasetLinker
-from src.db.geometadb_gse_loader import GEOmetadbGSELoader
+from flask import Flask, request, jsonify
+
 from src.app.swagger_template import swagger_template
 from src.config.config import Config
+from src.db.chained_dataset_linker import ChainedDatasetLinker
+from src.db.elink_dataset_linker import ELinkDatasetLinker
+from src.db.europepmc_dataset_linker import EuropePMCDatasetLinker
+from src.db.geometadb_gse_loader import GEOmetadbGSELoader
+from src.db.ncbi_gse_loader import NCBIGSELoader
+from src.db.chained_gse_loader import ChainedGSELoader
 
 app = Flask(__name__)
 swagger = Swagger(app, template=swagger_template)
 CONFIG = Config(test=False)
 
-dataset_linker = GEOmetadbDatasetLinker(CONFIG)
-gse_loader = GEOmetadbGSELoader(CONFIG)
+geometadb_gse_loader = GEOmetadbGSELoader(CONFIG)
 
 # Deployment and development
 LOG_PATHS = ['/logs', os.path.expanduser('~/.pubtrends-datasets/logs')]
@@ -35,8 +41,10 @@ logging.basicConfig(filename=logfile,
 
 logger = app.logger
 
+
 def log_request(r):
     return f'addr:{r.remote_addr} args:{json.dumps(r.args)}'
+
 
 @app.route('/datasets', methods=['GET'])
 def get_datasets():
@@ -85,33 +93,42 @@ def get_datasets():
     """
     logger.info(f'/datasets {log_request(request)}')
     pubmed_ids_param = request.args.get('pubmed_ids', '')
-    
+
     if not pubmed_ids_param:
         logger.error(f'/datasets error {log_request(request)}')
         return jsonify({"error": "pubmed_ids parameter is required"}), 400
-    
+
     pubmed_ids = [pid.strip() for pid in pubmed_ids_param.split(',') if pid.strip()]
-    
+
     if not pubmed_ids:
         return jsonify({"error": "At least one valid PubMed ID is required"}), 400
-    
+
     try:
-        gse_accessions = dataset_linker.link_to_datasets(pubmed_ids)
-        
-        if not gse_accessions:
-            return jsonify([])
-        
-        gse_objects = gse_loader.load_gses(gse_accessions)
-        
-        result = [asdict(gse) for gse in gse_objects]
-        
-        return jsonify(result)
-    
+        with requests.Session() as http_session:
+            europepmc_dataset_linker = EuropePMCDatasetLinker(http_session)
+            elink_dataset_linker = ELinkDatasetLinker(http_session)
+            dataset_linker = ChainedDatasetLinker(elink_dataset_linker, europepmc_dataset_linker)
+            gse_accessions = dataset_linker.link_to_datasets(pubmed_ids)
+            gse_accessions = list(filter(lambda acc: acc.startswith("GSE"), gse_accessions))
+
+            if not gse_accessions:
+                return jsonify([])
+
+            # Load the GSE objects using a chain: GEOmetadb first, then NCBI for missing ones
+            chained_loader = ChainedGSELoader(
+                geometadb_gse_loader,
+                NCBIGSELoader(http_session, CONFIG)
+            )
+            gse_objects = chained_loader.load_gses(gse_accessions)
+
+            result = [asdict(gse) for gse in gse_objects]
+
+            return jsonify(result)
+
     except Exception as e:
-        logger.error(f'/datasets exception {log_request(request)}')
+        logger.exception(f'/datasets exception {e}')
         return jsonify({"error": str(e)}), 500
 
 
 if __name__ == '__main__':
     app.run(debug=True)
-

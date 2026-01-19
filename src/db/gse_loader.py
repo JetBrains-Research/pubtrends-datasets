@@ -1,11 +1,11 @@
 from abc import ABCMeta, abstractmethod
-from typing import List
+from typing import Iterable, List
 from src.db.gse import GSE
 
 
 class GSELoader(metaclass=ABCMeta):
     @abstractmethod
-    def load_gses(self, gse_accessions: List[str]) -> List[GSE]:
+    def load_gses(self, gse_accessions: Iterable[str]) -> List[GSE]:
         """
         Returns GSE objects associated with the GEO series with the acession
         numbers provided in the list

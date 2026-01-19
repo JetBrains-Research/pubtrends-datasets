@@ -7,7 +7,7 @@ from typing import Optional
 @dataclass
 class GSE:
     """Gene Expression Omnibus Series (GSE) data model."""
-    
+
     ID: Optional[float] = None
     title: Optional[str] = None
     gse: Optional[str] = None
