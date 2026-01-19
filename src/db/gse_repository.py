@@ -1,13 +1,15 @@
 import asyncio
-import json
 import logging
 import os
 import sqlite3
-from dataclasses import fields, astuple
 from typing import List
 
-import aiosqlite
-from dacite import from_dict
+import sqlalchemy.exc
+from sqlalchemy import create_engine
+from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import Session
 
 from src.db.gse import GSE
 
@@ -17,29 +19,14 @@ MAX_PARALLEL_REQUESTS = 10
 
 class GSERepository:
     def __init__(self, geometadb_path: str) -> None:
+        if not os.path.isfile(geometadb_path):
+            raise RuntimeError(f"Geometadb file {geometadb_path} does not exist")
+        if not os.access(geometadb_path, os.W_OK):
+            raise RuntimeError(f"Geometadb file {geometadb_path} is not writable")
+        self.engine = create_engine(f"sqlite:///{geometadb_path}")
+        self.async_engine = create_async_engine(f"sqlite+aiosqlite:///{geometadb_path}")
         self.geometadb_path = geometadb_path
-        if not os.path.isfile(self.geometadb_path):
-            raise RuntimeError(f"Geometadb file {self.geometadb_path} does not exist")
-        if not os.access(self.geometadb_path, os.W_OK):
-            raise RuntimeError(f"Geometadb file {self.geometadb_path} is not writable")
-        self.check_geometadb_integrity()
         self.semaphore = asyncio.Semaphore(MAX_PARALLEL_REQUESTS)
-
-    def check_geometadb_integrity(self):
-        """
-        Checks if the geometadb sqlite database is corrupted.
-        Raises a RuntimeError if the database is corrupted.
-        """
-        try:
-            with sqlite3.connect(self.geometadb_path) as conn:
-                pass
-                #cursor = conn.cursor()
-                #cursor.execute("PRAGMA integrity_check;")
-                #result = cursor.fetchone()
-                #if not result or result[0] != "ok":
-                    #raise RuntimeError("Geometadb file is corrupted")
-        except sqlite3.Error:
-            raise RuntimeError("Geometadb file is corrupted")
 
     def save_gses(self, gses: List[GSE]) -> None:
         """
@@ -49,37 +36,23 @@ class GSERepository:
         """
         if not gses:
             return
-
         try:
-            with sqlite3.connect(self.geometadb_path) as conn:
-                cursor = conn.cursor()
-                gse_tuples = [astuple(gse) for gse in gses]
-                cursor.executemany(self._create_insert_query(), gse_tuples)
-                cursor.close()
-        except sqlite3.Error:
-            # Just log the exception so as not to fail the whole pipeline.
+            with Session(self.engine) as session:
+                session.add_all(gses)
+                session.commit()
+        except SQLAlchemyError:
             logger.exception("Failed to save GEO datasets to geometadb:")
-
-    @staticmethod
-    def _create_insert_query() -> str:
-        field_names = [f.name for f in fields(GSE)]
-        headers = ','.join(field_names)
-        placeholders = ','.join(['?'] * len(field_names))
-        table = 'gse'
-        return f"INSERT OR REPLACE INTO {table} ({headers}) VALUES ({placeholders})"
+            raise
 
     async def save_gses_async(self, gses: List[GSE]) -> None:
         if not gses:
             return
 
         try:
-            async with aiosqlite.connect(self.geometadb_path, timeout=10) as conn:
-                cursor = await conn.cursor()
-                gse_tuples = [astuple(gse) for gse in gses]
-                await self.executemany_with_retry(cursor, self._create_insert_query(), gse_tuples)
-                await conn.commit()
-                await cursor.close()
-        except sqlite3.Error as e:
+            async with AsyncSession(self.async_engine) as session:
+                session.add_all(gses)
+                await session.commit()
+        except sqlalchemy.exc.SQLAlchemyError as e:
             # Just log the exception so as not to fail the whole pipeline.
             logger.exception("Failed to save GEO datasets to geometadb:")
             raise e
@@ -104,13 +77,13 @@ class GSERepository:
         if not gse_accessions:
             return []
         try:
-            with sqlite3.connect(self.geometadb_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT * FROM gse WHERE gse IN (SELECT value FROM json_each(?))",
-                               (json.dumps(gse_accessions),))
-                results = cursor.fetchall()
-                return [GSE(*result) for result in results]
-        except sqlite3.Error:
+            with Session(self.engine) as session:
+                statement = (
+                    select(GSE)
+                    .where(GSE.gse.in_(gse_accessions))
+                )
+                return list(session.scalars(statement).all())
+        except SQLAlchemyError:
             logger.exception("Failed to load GEO datasets from geometadb:")
             return []
 
@@ -125,14 +98,12 @@ class GSERepository:
             return []
         try:
             async with self.semaphore:
-                async with aiosqlite.connect(self.geometadb_path, timeout=10) as conn:
-                    conn.row_factory = aiosqlite.Row
-                    async with conn.execute(
-                            "SELECT * FROM gse WHERE gse IN (SELECT value FROM json_each(?))",
-                            (json.dumps(gse_accessions),)
-                    ) as cursor:
-                        rows = await cursor.fetchall()
-                        return [from_dict(GSE, dict(row)) for row in rows]
-        except sqlite3.Error:
+                async with AsyncSession(self.async_engine) as session:
+                    statement = (
+                        select(GSE)
+                        .where(GSE.gse.in_(gse_accessions))
+                    )
+                    return list((await session.scalars(statement)).all())
+        except SQLAlchemyError:
             logger.exception("Failed to load GEO datasets from geometadb:")
             return []
