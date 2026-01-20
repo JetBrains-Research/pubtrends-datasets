@@ -3,16 +3,9 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-from sqlalchemy import Column, Index, Integer, PrimaryKeyConstraint, REAL, Text
-from sqlalchemy.orm import DeclarativeBase, MappedAsDataclass
-from sqlalchemy.orm import registry
+from src.db.mapper_registry import mapper_registry
 
-mapper_registry = registry()
-
-
-
-class Base(MappedAsDataclass, DeclarativeBase):
-    pass
+from sqlalchemy import Index, Integer, PrimaryKeyConstraint, REAL, Text, Column
 
 
 @mapper_registry.mapped

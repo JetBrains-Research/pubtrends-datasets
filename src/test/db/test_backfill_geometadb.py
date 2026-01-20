@@ -15,18 +15,27 @@ from src.test.helpers.async_iterator import AsyncIterator
 class TestGEOmetadbBackfiller(unittest.TestCase):
     def setUp(self):
         self.test_config = Config(test=True)
-        self.repository = Mock()
-        self.repository.save_gses_async = AsyncMock()
-        self.repository.get_gses_async = AsyncMock(return_value=[])
+        self.gse_repository = Mock()
+        self.gse_repository.save_gses_async = AsyncMock()
+        self.gse_repository.get_gses_async = AsyncMock(return_value=[])
+
+        self.geometadb_update_job_repository = Mock()
+        self.geometadb_update_job_repository.create_update_job.return_value = Mock()
 
         # Setup patches and store mocks on self for easy access
         self.mock_get_accessions = self.enterContext(patch("src.db.backfill_geometadb.get_geo_ids"))
         self.mock_aiohttp_get = self.enterContext(patch("aiohttp.ClientSession.get"))
 
-        self.backfiller = GEOmetadbBackfiller(self.test_config, self.repository)
+        self.backfiller = GEOmetadbBackfiller(self.test_config, self.gse_repository, self.geometadb_update_job_repository)
         self.gse_accessions = ["GSE000000"]
         self.start_date = datetime.datetime(2025, 1, 1)
         self.end_date = datetime.datetime(2025, 1, 2)
+
+    def _assert_update_job_created(self):
+        self.geometadb_update_job_repository.create_update_job.assert_called_once()
+        self.assertEqual(self.geometadb_update_job_repository.create_update_job.call_args[0][0], self.gse_accessions)
+        self.assertEqual(self.geometadb_update_job_repository.create_update_job.call_args[0][1], self.start_date)
+        self.assertEqual(self.geometadb_update_job_repository.create_update_job.call_args[0][2], self.end_date)
 
     def _prepare_mock_geo_dataset_response(self, gse_accession: str, valid_body=True):
         raw_body = "\n".join([f"^SERIES = {gse_accession}", "!Series_title = Title",
@@ -47,16 +56,18 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         datasets = self.backfiller.backfill_geometadb(self.start_date, self.end_date)
 
         self.mock_get_accessions.assert_called_once()
+        self._assert_update_job_created()
         self.mock_aiohttp_get.assert_called_once()
         self.assertEqual(len(datasets), 1)
         self.assertEqual(datasets[0].gse, self.gse_accessions[0])
-        self.repository.save_gses_async.assert_called_once()
+        self.gse_repository.save_gses_async.assert_called_once()
 
     def test_backfill_geometadb_download_failure(self):
         self.mock_aiohttp_get.side_effect = asyncio.TimeoutError("Download failed")
         self.mock_get_accessions.return_value = self.gse_accessions
 
         self.assertRaises(asyncio.TimeoutError, self.backfiller.backfill_geometadb, self.start_date, self.end_date)
+        self._assert_update_job_created()
         self.mock_get_accessions.assert_called_once()
         self.assertEqual(self.mock_aiohttp_get.call_count, RETRY_ATTEMPTS)
 
@@ -64,6 +75,7 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         self._prepare_mock_geo_dataset_response(self.gse_accessions[0], valid_body=False)
 
         self.assertRaises(gzip.BadGzipFile, self.backfiller.backfill_geometadb, self.start_date, self.end_date)
+        self._assert_update_job_created()
         self.mock_get_accessions.assert_called_once()
         self.assertEqual(self.mock_aiohttp_get.call_count, RETRY_ATTEMPTS)
 
@@ -84,6 +96,7 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         self.mock_get_accessions.assert_called_once()
         self.mock_aiohttp_get.assert_called_once()
         mock_get_geo.assert_called_once()
+        self._assert_update_job_created()
 
 
     def test_backfill_geometadb_invalid_date_range(self):

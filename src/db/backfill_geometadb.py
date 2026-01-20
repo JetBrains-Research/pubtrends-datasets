@@ -15,6 +15,7 @@ from tenacity import retry, stop_after_attempt
 from tqdm.asyncio import tqdm_asyncio as tqdm
 
 from src.config.config import Config
+from src.db.geometadb_update_job_repository import GEOmetadbUpdateJobRepository
 from src.db.geoparse_to_geometadb import format_geoparse_metadata
 from src.db.get_geo_accessions_for_dates import get_geo_ids
 from src.db.gse import GSE
@@ -42,13 +43,14 @@ async def tqdm_gather(*fs, return_exceptions=False, **kwargs):
 
 
 class GEOmetadbBackfiller():
-    def __init__(self, config: Config, gse_repository: GSERepository):
+    def __init__(self, config: Config, gse_repository: GSERepository, geometadb_update_job_repository: GEOmetadbUpdateJobRepository):
         self.dataset_parser_workers = config.dataset_parser_workers
         self.max_connections = config.max_ncbi_connections
         self.download_folder = config.dataset_download_folder
         self.repository = gse_repository
         self.semaphore = asyncio.Semaphore(self.max_connections)
         self.show_progress = config.show_backfill_progress
+        self.geometadb_update_job_repository = geometadb_update_job_repository
 
     @staticmethod
     def get_ftp_path(gse_accession: str) -> str:
@@ -153,7 +155,11 @@ class GEOmetadbBackfiller():
         :return: List of downloaded GEO datasets from the given timeframe.
         """
         gse_accessions = get_geo_ids(start_date, end_date)
-        return asyncio.run(self.download_datasets(gse_accessions, skip_existing, ignore_failures), debug=True)
+        job = self.geometadb_update_job_repository.create_update_job(gse_accessions, start_date, end_date)
+        assert job is not None
+        backfilled_gses = asyncio.run(self.download_datasets(gse_accessions, skip_existing, ignore_failures), debug=True)
+        self.geometadb_update_job_repository.mark_job_complete(job.id)
+        return backfilled_gses
 
     async def download_datasets(self, gse_accessions: List[str], skip_existing=True, ignore_failures=False):
         """
@@ -210,7 +216,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     config = Config(test=False)
-    repository = GSERepository(config.geometadb_path)
-    backfiller = GEOmetadbBackfiller(config, repository)
+    gse_repository = GSERepository(config.geometadb_path)
+    geometadb_update_job_repository = GEOmetadbUpdateJobRepository(config.geometadb_path)
+    backfiller = GEOmetadbBackfiller(config, gse_repository, geometadb_update_job_repository)
     backfiller.backfill_geometadb(args.start_date, args.end_date, args.skip_existing, args.ignore_failures)
     print("Done")
