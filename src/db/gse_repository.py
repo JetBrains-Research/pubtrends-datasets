@@ -38,7 +38,8 @@ class GSERepository:
             return
         try:
             with Session(self.engine) as session:
-                session.add_all(gses)
+                for gse in gses:
+                    session.merge(gse)
                 session.commit()
         except SQLAlchemyError:
             logger.exception("Failed to save GEO datasets to geometadb:")
@@ -50,7 +51,8 @@ class GSERepository:
 
         try:
             async with AsyncSession(self.async_engine) as session:
-                session.add_all(gses)
+                for gse in gses:
+                    await session.merge(gse)
                 await session.commit()
         except sqlalchemy.exc.SQLAlchemyError as e:
             # Just log the exception so as not to fail the whole pipeline.
