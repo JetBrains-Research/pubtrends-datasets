@@ -33,6 +33,7 @@ migrate = Migrate(app, db)
 
 repository = GSERepository(CONFIG.geometadb_path)
 geometadb_gse_loader = GEOmetadbGSELoader(repository)
+update_job_repository = GEOmetadbUpdateJobRepository(CONFIG.geometadb_path)
 
 configure_log_file()
 
@@ -124,6 +125,150 @@ def get_datasets():
 
     except Exception as e:
         logger.exception(f'/datasets exception {e}')
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/update-jobs', methods=['GET'])
+def get_update_jobs():
+    """
+    GET endpoint to retrieve all GEOmetadb update jobs.
+    ---
+    summary: Get all GEOmetadb update jobs
+    description: |
+      Retrieves all GEOmetadb update jobs, ordered by date (most recent first).
+      Each job contains information about when it was run and its status.
+    responses:
+      200:
+        description: Successful response with list of update jobs
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 1
+              date:
+                type: string
+                format: date-time
+                example: "2026-01-21T10:30:00"
+              status:
+                type: string
+                enum: [in_progress, cancelled, failed, successful]
+                example: "successful"
+              last_update_date_start:
+                type: string
+                format: date-time
+                example: "2026-01-01T00:00:00"
+              last_update_date_end:
+                type: string
+                format: date-time
+                example: "2026-01-10T00:00:00"
+        examples:
+          application/json:
+            - id: 1
+              date: "2026-01-21T10:30:00"
+              status: "successful"
+              last_update_date_start: "2026-01-01T00:00:00"
+              last_update_date_end: "2026-01-10T00:00:00"
+      500:
+        description: Internal server error
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+    """
+    logger.info(f'/update-jobs {log_request(request)}')
+    
+    try:
+        jobs = update_job_repository.get_all_jobs()
+        result = [{
+            "id": job.id,
+            "date": job.date.isoformat() if job.date else None,
+            "status": job.status,
+            "last_update_date_start": job.last_update_date_start.isoformat() if job.last_update_date_start else None,
+            "last_update_date_end": job.last_update_date_end.isoformat() if job.last_update_date_end else None
+        } for job in jobs]
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.exception(f'/update-jobs exception {e}')
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/update-jobs/<int:job_id>/updates', methods=['GET'])
+def get_job_updates(job_id):
+    """
+    GET endpoint to retrieve all GSE updates for a specific job.
+    ---
+    summary: Get GSE updates for a specific update job
+    description: |
+      Retrieves all GSE accessions that were updated as part of a specific job,
+      along with their individual update statuses.
+    parameters:
+      - name: job_id
+        in: path
+        type: integer
+        required: true
+        description: The ID of the update job
+        example: 1
+    responses:
+      200:
+        description: Successful response with list of GSE updates
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              gse_acc:
+                type: string
+                example: "GSE12345"
+              status:
+                type: string
+                enum: [pending, failed, successful]
+                example: "successful"
+        examples:
+          application/json:
+            - gse_acc: "GSE12345"
+              status: "successful"
+            - gse_acc: "GSE67890"
+              status: "successful"
+      404:
+        description: Job not found
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "Job not found"
+      500:
+        description: Internal server error
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+    """
+    logger.info(f'/update-jobs/{job_id}/updates {log_request(request)}')
+    
+    try:
+        # Check if job exists
+        job = update_job_repository.get_job_by_id(job_id)
+        if not job:
+            return jsonify({"error": "Job not found"}), 404
+        
+        updates = update_job_repository.get_job_updates(job_id)
+        result = [{
+            "gse_acc": update.gse_acc,
+            "status": update.status
+        } for update in updates]
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.exception(f'/update-jobs/{job_id}/updates exception {e}')
         return jsonify({"error": str(e)}), 500
 
 

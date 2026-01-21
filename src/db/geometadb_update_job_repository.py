@@ -25,6 +25,28 @@ class GEOmetadbUpdateJobRepository:
         self.async_engine = create_async_engine(f"sqlite+aiosqlite:///{geometadb_path}", future=True, echo=False)
         self.semaphore = asyncio.Semaphore(MAX_PARALLEL_REQUESTS)
 
+    def get_all_jobs(self) -> List[GEOmetadbUpdateJob]:
+        """Retrieves all update job records."""
+        try:
+            with Session(self.engine) as session:
+                stmt = select(GEOmetadbUpdateJob).order_by(GEOmetadbUpdateJob.date.desc())
+                return list(session.scalars(stmt).all())
+        except SQLAlchemyError as e:
+            logger.exception(f"Failed to retrieve all jobs:")
+            raise e
+
+    def get_job_updates(self, job_id: int) -> List[GEOmetadbUpdateJobAssociation]:
+        """Retrieves all GSE updates for a specific job."""
+        try:
+            with Session(self.engine) as session:
+                stmt = select(GEOmetadbUpdateJobAssociation).where(
+                    GEOmetadbUpdateJobAssociation.update_id == job_id
+                ).order_by(GEOmetadbUpdateJobAssociation.gse_acc)
+                return list(session.scalars(stmt).all())
+        except SQLAlchemyError as e:
+            logger.exception(f"Failed to retrieve updates for job {job_id}:")
+            raise e
+
     def create_update_job(self, updated_gse_accessions: List[str], last_update_date_start: datetime.datetime,
                           last_update_date_end: datetime.datetime) -> GEOmetadbUpdateJob:
         """
@@ -71,13 +93,15 @@ class GEOmetadbUpdateJobRepository:
 
     async def set_gse_update_status_async(self, job_id: int, gse_accession: str, status: str) -> None:
         try:
-            async with self.semaphore, AsyncSession(self.async_engine) as session:
-                stmt = select(GEOmetadbUpdateJobAssociation).where(
-                    GEOmetadbUpdateJobAssociation.update_id == job_id).and_(
-                    GEOmetadbUpdateJobAssociation.gse_acc == gse_accession)
-                job = (await session.scalars(stmt)).first()
-                job.status = status
-                await session.commit()
+            async with self.semaphore:
+                async with AsyncSession(self.async_engine) as session:
+                    stmt = select(GEOmetadbUpdateJobAssociation).where(
+                        GEOmetadbUpdateJobAssociation.update_id == job_id,
+                        GEOmetadbUpdateJobAssociation.gse_acc == gse_accession
+                    )
+                    job = (await session.scalars(stmt)).first()
+                    job.status = status
+                    await session.commit()
         except SQLAlchemyError as e:
             logger.exception(f"Failed to mark job {job_id} as complete:")
             raise e
