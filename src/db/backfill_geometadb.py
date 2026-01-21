@@ -47,7 +47,7 @@ class GEOmetadbBackfiller():
         self.dataset_parser_workers = config.dataset_parser_workers
         self.max_connections = config.max_ncbi_connections
         self.download_folder = config.dataset_download_folder
-        self.repository = gse_repository
+        self.gse_repository = gse_repository
         self.semaphore = asyncio.Semaphore(self.max_connections)
         self.show_progress = config.show_backfill_progress
         self.geometadb_update_job_repository = geometadb_update_job_repository
@@ -77,7 +77,7 @@ class GEOmetadbBackfiller():
         :param skip_existing: If the dataset already exists in the database, skip downloading and parsing it.
         :return: GSE object representing the dataset.
         """
-        existing_dataset = await self.repository.get_gses_async([gse_accession])
+        existing_dataset = await self.gse_repository.get_gses_async([gse_accession])
         if existing_dataset and skip_existing:
             return existing_dataset[0]
 
@@ -88,7 +88,7 @@ class GEOmetadbBackfiller():
 
         loop = asyncio.get_running_loop()
         gse = await loop.run_in_executor(executor, GEOmetadbBackfiller.parse_dataset, download_path)
-        await self.repository.save_gses_async([gse])
+        await self.gse_repository.save_gses_async([gse])
         logger.info(f"Saved dataset {gse_accession}")
         return gse
 
@@ -143,7 +143,7 @@ class GEOmetadbBackfiller():
             raise e
 
     def backfill_geometadb(self, start_date: datetime.datetime, end_date: datetime.datetime, skip_existing=True,
-                           ignore_failures=False):
+                       ignore_failures=False):
         """
         Downloads GEO datasets from the given date range and saves them to the
         geometadb database.
@@ -156,18 +156,31 @@ class GEOmetadbBackfiller():
         """
         gse_accessions = get_geo_ids(start_date, end_date)
         job = self.geometadb_update_job_repository.create_update_job(gse_accessions, start_date, end_date)
-        assert job is not None
-        backfilled_gses = asyncio.run(self.download_datasets(gse_accessions, skip_existing, ignore_failures), debug=True)
-        self.geometadb_update_job_repository.mark_job_complete(job.id)
-        return backfilled_gses
 
-    async def download_datasets(self, gse_accessions: List[str], skip_existing=True, ignore_failures=False):
+        async def set_gse_update_status(gse_acc: str, success: bool, error: Exception = None):
+            status = "successful" if success else "failed"
+            await self.geometadb_update_job_repository.set_gse_update_status_async(job.id, gse_acc, status)
+
+        try:
+            backfilled_gses = asyncio.run(self.download_datasets(gse_accessions, skip_existing, ignore_failures, on_dataset_complete=set_gse_update_status), debug=True)
+            self.geometadb_update_job_repository.set_job_status(job.id, "successful")
+            return backfilled_gses
+        except KeyboardInterrupt as e:
+            self.geometadb_update_job_repository.set_job_status(job.id, "cancelled")
+            raise e
+        except Exception as e:
+            self.geometadb_update_job_repository.set_job_status(job.id, "failed")
+            raise e
+
+
+    async def download_datasets(self, gse_accessions: List[str], skip_existing=True, ignore_failures=False, on_dataset_complete=None):
         """
         Downloads GEO datasets asynchronously and adds them to the geometadb database.
 
         :param gse_accessions: List of GEO accession numbers for the datasets to download (ex. GSE12345).
         :param skip_existing: If True, datasets that already exist in the database will not be re-downloaded.
         :param ignore_failures: If True, datasets that fail to download will be ignored.
+        :param on_dataset_complete: Optional callback function(gse_accession, success, error) called after each dataset.
         :return: List of successfully downloaded GEO datasets.
         """
         pool_size = self.dataset_parser_workers
@@ -177,19 +190,29 @@ class GEOmetadbBackfiller():
             async with aiohttp.ClientSession(raise_for_status=True,
                                              timeout=aiohttp.ClientTimeout(total=None, sock_connect=10,
                                                                            sock_read=10)) as session:
-                tasks = [self.download_dataset(acc, executor, session, skip_existing=skip_existing) for acc in
+                tasks = [self._download_dataset_with_callback(acc, executor, session, skip_existing, on_dataset_complete) for acc in
                          gse_accessions]
                 datasets = await tqdm_gather(*tasks,
                                              return_exceptions=ignore_failures) if self.show_progress else await asyncio.gather(
                     *tasks, return_exceptions=ignore_failures)
-            if not ignore_failures:
-                return datasets
+        if not ignore_failures:
+            return datasets
 
-            for gse in datasets:
-                if isinstance(gse, Exception):
-                    logger.error(f"Failed to download dataset: {gse}")
-            return [gse for gse in datasets if not isinstance(gse, Exception)]
+        for gse in datasets:
+            if isinstance(gse, Exception):
+                logger.error(f"Failed to download dataset: {gse}")
+        return [gse for gse in datasets if not isinstance(gse, Exception)]
 
+    async def _download_dataset_with_callback(self, gse_accession, executor, session, skip_existing, callback):
+        try:
+            result = await self.download_dataset(gse_accession, executor, session, skip_existing)
+            if callback:
+                await callback(gse_accession, success=True, error=None)
+            return result
+        except Exception as e:
+            if callback:
+                await callback(gse_accession, success=False, error=e)
+            raise
 
 if __name__ == '__main__':
     import argparse
