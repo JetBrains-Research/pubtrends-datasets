@@ -21,6 +21,7 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
 
         self.geometadb_update_job_repository = Mock()
         self.geometadb_update_job_repository.create_update_job.return_value = Mock()
+        self.geometadb_update_job_repository.set_gse_update_status_async = AsyncMock()
 
         # Setup patches and store mocks on self for easy access
         self.mock_get_accessions = self.enterContext(patch("src.db.backfill_geometadb.get_geo_ids"))
