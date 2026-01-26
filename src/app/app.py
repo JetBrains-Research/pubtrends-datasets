@@ -2,14 +2,12 @@
 
 import json
 from dataclasses import asdict
-from ssl import get_server_certificate
 
 import requests
 from flasgger import Swagger
 from flask import Flask, request, jsonify
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from pandas.io.formats.format import get_series_repr_params
 
 from src.app.swagger_template import swagger_template
 from src.config.config import Config
@@ -18,8 +16,8 @@ from src.db.chained_dataset_linker import ChainedDatasetLinker
 from src.db.chained_gse_loader import ChainedGSELoader
 from src.db.elink_dataset_linker import ELinkDatasetLinker
 from src.db.europepmc_dataset_linker import EuropePMCDatasetLinker
-from src.db.gse_repository import GSERepository
 from src.db.geometadb_update_job_repository import GEOmetadbUpdateJobRepository
+from src.db.gse_repository import GSERepository
 from src.db.mapper_registry import mapper_registry
 from src.db.ncbi_gse_loader import NCBIGSELoader
 
