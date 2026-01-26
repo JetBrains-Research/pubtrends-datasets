@@ -38,7 +38,7 @@ class TestNCBIGSELoader(unittest.TestCase):
     def test_load_gses_success(self, gse_accessions: List[str], expected_ids: List[str], mock_sql):
         self.mock_session.get.side_effect = [self._make_ok_response(accession) for accession in gse_accessions]
 
-        gses: List[GSE] = self.loader.load_gses(gse_accessions)
+        gses: List[GSE] = self.loader.get_gses(gse_accessions)
         gse_ids = [g.gse for g in gses]
         self.assertListEqual(gse_ids, expected_ids)
 
@@ -51,7 +51,7 @@ class TestNCBIGSELoader(unittest.TestCase):
         self.mock_session.get.return_value = self._make_error_response()
 
         with self.assertRaises(GEOError):
-            self.loader.load_gses(["GSE12345"])
+            self.loader.get_gses(["GSE12345"])
 
         self.mock_session.get.assert_called_once()
 
@@ -61,6 +61,6 @@ class TestNCBIGSELoader(unittest.TestCase):
         self.mock_session.get.side_effect = req_exc
 
         with self.assertRaises(GEOError):
-            self.loader.load_gses(["GSE99999"])
+            self.loader.get_gses(["GSE99999"])
 
         self.mock_session.get.assert_called_once()

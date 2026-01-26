@@ -2,12 +2,14 @@
 
 import json
 from dataclasses import asdict
+from ssl import get_server_certificate
 
 import requests
 from flasgger import Swagger
 from flask import Flask, request, jsonify
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
+from pandas.io.formats.format import get_series_repr_params
 
 from src.app.swagger_template import swagger_template
 from src.config.config import Config
@@ -16,7 +18,6 @@ from src.db.chained_dataset_linker import ChainedDatasetLinker
 from src.db.chained_gse_loader import ChainedGSELoader
 from src.db.elink_dataset_linker import ELinkDatasetLinker
 from src.db.europepmc_dataset_linker import EuropePMCDatasetLinker
-from src.db.geometadb_gse_loader import GEOmetadbGSELoader
 from src.db.gse_repository import GSERepository
 from src.db.geometadb_update_job_repository import GEOmetadbUpdateJobRepository
 from src.db.mapper_registry import mapper_registry
@@ -31,8 +32,7 @@ db = SQLAlchemy(metadata=mapper_registry.metadata)
 db.init_app(app)
 migrate = Migrate(app, db)
 
-repository = GSERepository(CONFIG.geometadb_path)
-geometadb_gse_loader = GEOmetadbGSELoader(repository)
+gse_repository = GSERepository(CONFIG.geometadb_path)
 update_job_repository = GEOmetadbUpdateJobRepository(CONFIG.geometadb_path)
 
 configure_log_file()
@@ -114,10 +114,10 @@ def get_datasets():
 
             # Load the GSE objects using a chain: GEOmetadb first, then NCBI for missing ones
             chained_loader = ChainedGSELoader(
-                geometadb_gse_loader,
-                NCBIGSELoader(http_session, repository)
+                gse_repository,
+                NCBIGSELoader(http_session, gse_repository)
             )
-            gse_objects = chained_loader.load_gses(gse_accessions)
+            gse_objects = chained_loader.get_gses(gse_accessions)
 
             result = [asdict(gse) for gse in gse_objects]
 

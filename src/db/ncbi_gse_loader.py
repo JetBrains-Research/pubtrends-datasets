@@ -21,7 +21,7 @@ class NCBIGSELoader(GSELoader):
         self.session = session
         self.repository = repository
 
-    def load_gses(self, gse_accessions: List[str]) -> List[GSE]:
+    def get_gses(self, gse_accessions: List[str]) -> List[GSE]:
         gses = [self.download_geo_dataset(accession) for accession in gse_accessions]
         self.repository.save_gses(gses)
         return gses

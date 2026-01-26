@@ -16,7 +16,7 @@ class ChainedGSELoader(GSELoader):
             raise ValueError("At least one GSELoader must be provided")
         self.loaders: List[GSELoader] = list(loaders)
 
-    def load_gses(self, gse_accessions: List[str]) -> List[GSE]:
+    def get_gses(self, gse_accessions: List[str]) -> List[GSE]:
         if not gse_accessions:
             return []
 
@@ -26,7 +26,7 @@ class ChainedGSELoader(GSELoader):
         for loader in self.loaders:
             if not remaining:
                 break
-            results = loader.load_gses(remaining)
+            results = loader.get_gses(remaining)
             for g in results:
                 if g and g.gse and g.gse not in found_map:
                     found_map[g.gse] = g

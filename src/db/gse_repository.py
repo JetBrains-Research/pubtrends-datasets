@@ -12,12 +12,13 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import Session
 
 from src.db.gse import GSE
+from src.db.gse_loader import GSELoader
 
 logger = logging.getLogger(__name__)
 MAX_PARALLEL_REQUESTS = 10
 
 
-class GSERepository:
+class GSERepository(GSELoader):
     def __init__(self, geometadb_path: str) -> None:
         if not os.path.isfile(geometadb_path):
             raise RuntimeError(f"Geometadb file {geometadb_path} does not exist")
