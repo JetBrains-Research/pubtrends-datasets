@@ -41,8 +41,8 @@ Tweak these properties in `config.properties` to optimize performance on your ha
   - `max_ncbi_connections` - Maximum concurrent connections to NCBI's FTP server
   - `dataset_parser_workers` - Number of parallel worker processes for parsing
 
->[!CAUTION]
-> RAM Management: High dataset_parser_workers counts can lead to RAM exhaustion when parsing large files. It is recommended to start with one or two workers and monitor usage before scaling up.
+>[!WARNING]
+> RAM Management: `High dataset_parser_workers` counts can lead to RAM exhaustion when parsing large files. It is recommended to start with one or two workers and monitor usage before scaling up.
  
 To customize the backfilling process, change these properties:
   - `dataset_download_folder` - Path for storing downloaded datasets
