@@ -21,6 +21,34 @@ This script will install the prerequisite packages using the [uv](https://github
 
 After the script finishes, please edit and copy the `config.properties` file to `~/.pubtrends-datasets/config.properties`.
 
+## GEO dataset downloading and processing
+
+Use the geometadb backfilling tool to synchronize the database with currently available GEO datasets:
+```aiignore
+# Backfill from March 6, 2024, to the current date
+uv run python -m src.db.backfill_geometadb 2024-03-06 --ignore-failures
+```
+Positional arguments:
+- `start_date` - Start of the date range for which to download datasets
+- `end_date` - End of the date range for which to download datasets (default: today)
+ 
+Flags:
+- `--ignore-failures` - Continue processing even if dataset updates fail.
+- `--skip-existing` - Skip datasets already present in the local database
+
+### Configuration
+Tweak these properties in `config.properties` to optimize performance on your hardware:
+  - `max_ncbi_connections` - Maximum concurrent connections to NCBI's FTP server
+  - `dataset_parser_workers` - Number of parallel worker processes for parsing
+
+>[!CAUTION]
+> RAM Management: High dataset_parser_workers counts can lead to RAM exhaustion when parsing large files. It is recommended to start with one or two workers and monitor usage before scaling up.
+ 
+To customize the backfilling process, change these properties:
+  - `dataset_download_folder` - Path for storing downloaded datasets
+  - `show_backfill_progress` - Boolean to toggle the CLI progress bar.
+
+
 ## Launch instructions
 
 You can start the app using this command:

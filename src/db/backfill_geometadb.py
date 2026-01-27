@@ -226,7 +226,10 @@ if __name__ == '__main__':
 
     configure_log_file()
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        prog="GEOmetadb backfiller",
+    description="Downloads GEO datasets that were last updated in the given date range and saves them to the geometadb database."
+    )
     parser.add_argument(
         'start_date',
         type=lambda s: datetime.datetime.strptime(s, '%Y-%m-%d'),
