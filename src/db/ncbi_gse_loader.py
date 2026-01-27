@@ -35,6 +35,7 @@ class NCBIGSELoader(GSELoader):
         """
         dataset_metadata_url = NCBIGSELoader.DOWNLOAD_URL_TEMPLATE.format(accession)
         try:
+            logger.info(f"Downloading GEO dataset {accession}")
             response = self.session.get(dataset_metadata_url, stream=True)
             response.raise_for_status()
             metadata = GEOparse.GEOparse.parse_metadata(response.iter_lines(decode_unicode=True))
