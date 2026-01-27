@@ -25,7 +25,7 @@ After the script finishes, please edit and copy the `config.properties` file to 
 
 Use the geometadb backfilling tool to synchronize the database with currently available GEO datasets:
 ```aiignore
-# Backfill from March 6, 2024, to the current date
+# Backfill from March 6, 2024 (geometadb cutoff date), to the current date
 uv run python -m src.db.backfill_geometadb 2024-03-06 --ignore-failures
 ```
 Positional arguments:
