@@ -38,7 +38,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project
 
 RUN mkdir -p ~/.pubtrends-datasets/logs
-COPY test.config.properties /home/user/.pubtrends-datasets/config.properties
+COPY config.properties /home/user/.pubtrends-datasets/config.properties
 
 # Test DB generation
 COPY src/test/db/testgeometadb.sql /home/user/testgeometadb.sql
