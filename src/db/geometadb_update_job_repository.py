@@ -9,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import Session
 
-from src.db.geometadb_update_job import GEOmetadbUpdateJob, GEOmetadbUpdateJobAssociation
+from src.db.geometadb_update_job import GEOmetadbUpdateJob, GSEUpdate
 
 logger = logging.getLogger(__name__)
 MAX_PARALLEL_REQUESTS = 10
@@ -35,13 +35,13 @@ class GEOmetadbUpdateJobRepository:
             logger.exception(f"Failed to retrieve all jobs:")
             raise e
 
-    def get_gse_updates(self, job_id: int) -> List[GEOmetadbUpdateJobAssociation]:
+    def get_gse_updates(self, job_id: int) -> List[GSEUpdate]:
         """Retrieves all GSE updates for a specific job."""
         try:
             with Session(self.engine) as session:
-                stmt = select(GEOmetadbUpdateJobAssociation).where(
-                    GEOmetadbUpdateJobAssociation.update_id == job_id
-                ).order_by(GEOmetadbUpdateJobAssociation.gse_acc)
+                stmt = select(GSEUpdate).where(
+                    GSEUpdate.geometadb_update_job_id == job_id
+                ).order_by(GSEUpdate.gse_acc)
                 return list(session.scalars(stmt).all())
         except SQLAlchemyError as e:
             logger.exception(f"Failed to retrieve updates for job {job_id}:")
@@ -61,7 +61,7 @@ class GEOmetadbUpdateJobRepository:
                                                 last_update_date_start=last_update_date_start,
                                                 last_update_date_end=last_update_date_end)
                 for acc in updated_gse_accessions:
-                    update_job.updated_gses.append(GEOmetadbUpdateJobAssociation(gse_acc=acc))
+                    update_job.updated_gses.append(GSEUpdate(gse_acc=acc))
                 session.add(update_job)
                 session.commit()
                 return update_job
@@ -105,9 +105,9 @@ class GEOmetadbUpdateJobRepository:
         try:
             async with self.semaphore:
                 async with AsyncSession(self.async_engine) as session:
-                    stmt = select(GEOmetadbUpdateJobAssociation).where(
-                        GEOmetadbUpdateJobAssociation.update_id == job_id,
-                        GEOmetadbUpdateJobAssociation.gse_acc == gse_accession
+                    stmt = select(GSEUpdate).where(
+                        GSEUpdate.geometadb_update_job_id == job_id,
+                        GSEUpdate.gse_acc == gse_accession
                     )
                     job = (await session.scalars(stmt)).first()
                     job.status = status

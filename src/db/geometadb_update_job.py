@@ -10,13 +10,13 @@ from src.db.mapper_registry import mapper_registry
 
 @mapper_registry.mapped
 @dataclass
-class GEOmetadbUpdateJobAssociation:
-    __tablename__ = "gse_update_association"
+class GSEUpdate:
+    __tablename__ = "gse_update"
     __sa_dataclass_metadata_key__ = "sa"
 
-    update_id: int = field(
+    geometadb_update_job_id: int = field(
         init=False,
-        metadata={"sa": Column(Integer, ForeignKey("gse_update.id"), primary_key=True)}
+        metadata={"sa": Column(Integer, ForeignKey("geometadb_update_job.id"), primary_key=True)}
     )
     gse_acc: str = field(default=None,
                          metadata={"sa": Column(String, primary_key=True)}
@@ -28,9 +28,9 @@ class GEOmetadbUpdateJobAssociation:
 @mapper_registry.mapped
 @dataclass
 class GEOmetadbUpdateJob:
-    __tablename__ = 'gse_update'
+    __tablename__ = "geometadb_update_job"
     __table_args__ = (
-        Index('gse_update_id_idx', 'id'),
+        Index("geometadb_update_job_id_idx", "id"),
     )
     __sa_dataclass_metadata_key__ = "sa"
 
@@ -40,7 +40,7 @@ class GEOmetadbUpdateJob:
         "sa": Column(String, CheckConstraint('status IN ("in_progress", "cancelled", "failed", "successful")'))})
     last_update_date_start: Optional[datetime.datetime] = field(default=None, metadata={"sa": Column(DateTime)})
     last_update_date_end: Optional[datetime.datetime] = field(default=None, metadata={"sa": Column(DateTime)})
-    updated_gses: List[GEOmetadbUpdateJobAssociation] = field(
+    updated_gses: List[GSEUpdate] = field(
         default_factory=list,
-        metadata={"sa": relationship("GEOmetadbUpdateJobAssociation")}
+        metadata={"sa": relationship("GSEUpdate")}
     )
