@@ -48,6 +48,12 @@ To customize the backfilling process, change these properties:
   - `dataset_download_folder` - Path for storing downloaded datasets
   - `show_backfill_progress` - Boolean to toggle the CLI progress bar.
 
+## Database migration
+
+Database migrations are managed using `flask-migrate`. To migrate the database to the newest version, run:
+```aiignore
+uv run flask --app src.app.app db upgrade
+```
 
 ## Launch instructions
 
