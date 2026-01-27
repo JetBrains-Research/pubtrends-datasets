@@ -82,6 +82,7 @@ docker run --rm --platform linux/amd64 \
 --volume=$(pwd)/src:/pubtrends-datasets/src \
 --volume=$(pwd)/pyproject.toml:/pubtrends-datasets/pyproject.toml \
 --volume=$(pwd)/uv.lock:/pubtrends-datasets/uv.lock \
+--volume=$(pwd)/resources/docker/test/test.config.properties:/home/user/.pubtrends-datasets/config.properties \
 -i -t biolabs/pubtrends-datasets-test \
 /bin/bash -c "cd /pubtrends-datasets; uv sync --locked; uv run python -m unittest discover src/test"
 ```

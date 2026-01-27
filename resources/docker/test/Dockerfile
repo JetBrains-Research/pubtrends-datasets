@@ -38,13 +38,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project
 
 RUN mkdir -p ~/.pubtrends-datasets/logs
-COPY config.properties /home/user/.pubtrends-datasets/config.properties
 
 # Test DB generation
 COPY src/test/db/testgeometadb.sql /home/user/testgeometadb.sql
 COPY scripts /home/user/scripts
 RUN bash /home/user/scripts/create_test_sample.sh /home/user/testgeometadb.sql
-RUN sed -i "s|^test_geometadb_path\\s*=\\s*.*|test_geometadb_path=/home/user/geodatasets/testgeometadb.sqlite|" /home/user/.pubtrends-datasets/config.properties
 
 RUN mkdir -p ~/geodatasets/soft_files
-RUN sed -i "s|^dataset_download_folder\\s*=\\s*.*|dataset_download_folder=/home/user/geodatasets/soft_files|" /home/user/.pubtrends-datasets/config.properties
