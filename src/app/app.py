@@ -257,7 +257,7 @@ def get_job_updates(job_id):
         if not job:
             return jsonify({"error": "Job not found"}), 404
         
-        updates = update_job_repository.get_job_updates(job_id)
+        updates = update_job_repository.get_gse_updates(job_id)
         result = [{
             "gse_acc": update.gse_acc,
             "status": update.status

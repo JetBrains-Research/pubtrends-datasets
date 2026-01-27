@@ -35,7 +35,7 @@ class GEOmetadbUpdateJobRepository:
             logger.exception(f"Failed to retrieve all jobs:")
             raise e
 
-    def get_job_updates(self, job_id: int) -> List[GEOmetadbUpdateJobAssociation]:
+    def get_gse_updates(self, job_id: int) -> List[GEOmetadbUpdateJobAssociation]:
         """Retrieves all GSE updates for a specific job."""
         try:
             with Session(self.engine) as session:
@@ -62,7 +62,6 @@ class GEOmetadbUpdateJobRepository:
                                                 last_update_date_end=last_update_date_end)
                 for acc in updated_gse_accessions:
                     update_job.updated_gses.append(GEOmetadbUpdateJobAssociation(gse_acc=acc))
-                assert update_job is not None
                 session.add(update_job)
                 session.commit()
                 return update_job
@@ -81,6 +80,11 @@ class GEOmetadbUpdateJobRepository:
             raise e
 
     def set_job_status(self, job_id: int, status: str) -> None:
+        """
+        Sets the status of a job record.
+        :param job_id: Job ID.
+        :param status: New status. Must be one of "in_progress", "complete", "cancelled", or "failed".
+        """
         try:
             with Session(self.engine) as session:
                 stmt = select(GEOmetadbUpdateJob).where(GEOmetadbUpdateJob.id == job_id)
@@ -92,6 +96,12 @@ class GEOmetadbUpdateJobRepository:
             raise e
 
     async def set_gse_update_status_async(self, job_id: int, gse_accession: str, status: str) -> None:
+        """
+        Sets the status of a GSE update record.
+        :param job_id: Job ID.
+        :param gse_accession: GEO accession number of the updated dataset.
+        :status: New status. Must be one of "pending", "complete" or "failed".
+        """
         try:
             async with self.semaphore:
                 async with AsyncSession(self.async_engine) as session:

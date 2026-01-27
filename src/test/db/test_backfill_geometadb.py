@@ -23,12 +23,15 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         self.geometadb_update_job_repository.create_update_job.return_value = Mock()
         self.geometadb_update_job_repository.set_gse_update_status_async = AsyncMock()
 
-        # Setup patches and store mocks on self for easy access
-        self.mock_get_accessions = self.enterContext(patch("src.db.backfill_geometadb.get_geo_ids"))
+        self.gse_accessions = ["GSE000000"]
+        self.mock_get_accessions = self.enterContext(patch("src.db.backfill_geometadb.get_gse_ids_by_last_update_date"))
+        self.mock_get_accessions.return_value = self.gse_accessions
         self.mock_aiohttp_get = self.enterContext(patch("aiohttp.ClientSession.get"))
+        self.mock_get_running_loop = self.enterContext(patch("asyncio.get_running_loop"))
+        self.mock_get_running_loop.return_value.run_in_executor = AsyncMock()
+        self.mock_get_running_loop.return_value.run_in_executor.side_effect = lambda executor, func, *args: func(*args)
 
         self.backfiller = GEOmetadbBackfiller(self.test_config, self.gse_repository, self.geometadb_update_job_repository)
-        self.gse_accessions = ["GSE000000"]
         self.start_date = datetime.datetime(2025, 1, 1)
         self.end_date = datetime.datetime(2025, 1, 2)
 
@@ -39,20 +42,22 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         self.assertEqual(self.geometadb_update_job_repository.create_update_job.call_args[0][2], self.end_date)
 
     def _prepare_mock_geo_dataset_response(self, gse_accession: str, valid_body=True):
-        raw_body = "\n".join([f"^SERIES = {gse_accession}", "!Series_title = Title",
-                              f"!Series_geo_accession = {gse_accession}", f"!Series_pubmed_id = 12345"])
-        body = gzip.compress(raw_body.encode("utf-8")) if valid_body else b"INVALID"
+        body = None
+        if valid_body:
+            raw_body = "\n".join([f"^SERIES = {gse_accession}", "!Series_title = Title",
+                                  f"!Series_geo_accession = {gse_accession}", f"!Series_pubmed_id = 12345"])
+            body = gzip.compress(raw_body.encode("utf-8"))
+        else:
+            body = "^INVALID\n".encode("utf-8")
         mock_response = AsyncMock()
         mock_response.read.return_value = body
         mock_response.status = 200
         mock_response.content = Mock()
         mock_response.content.iter_chunked.side_effect = lambda chunk_size: AsyncIterator([body])
         self.mock_aiohttp_get.return_value.__aenter__.return_value = mock_response
-        self.mock_get_accessions.return_value = self.gse_accessions
 
     def test_backfill_geometadb_success(self):
         self._prepare_mock_geo_dataset_response(self.gse_accessions[0])
-        self.mock_get_accessions.return_value = self.gse_accessions
 
         datasets = self.backfiller.backfill_geometadb(self.start_date, self.end_date)
 
@@ -65,7 +70,6 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
 
     def test_backfill_geometadb_download_failure(self):
         self.mock_aiohttp_get.side_effect = asyncio.TimeoutError("Download failed")
-        self.mock_get_accessions.return_value = self.gse_accessions
 
         self.assertRaises(asyncio.TimeoutError, self.backfiller.backfill_geometadb, self.start_date, self.end_date)
         self._assert_update_job_created()
@@ -85,13 +89,10 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         (gzip.BadGzipFile("Invalid gzip")),
         (pandas.errors.ParserError("Invalid GPL table")),
     ])
-    @patch("asyncio.get_running_loop")
     @patch("GEOparse.get_GEO")
-    def test_backfill_geometadb_parse_failure(self, throwable: Exception, mock_get_geo: Mock, mock_get_running_loop: Mock):
+    def test_backfill_geometadb_parse_failure(self, throwable: Exception, mock_get_geo: Mock):
         self._prepare_mock_geo_dataset_response(self.gse_accessions[0])
         mock_get_geo.side_effect = throwable
-        mock_get_running_loop.return_value.run_in_executor = AsyncMock()
-        mock_get_running_loop.return_value.run_in_executor.side_effect = lambda executor, func, *args: func(*args)
 
         self.assertRaises(type(throwable), self.backfiller.backfill_geometadb, self.start_date, self.end_date)
         self.mock_get_accessions.assert_called_once()

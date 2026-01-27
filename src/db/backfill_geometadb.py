@@ -17,7 +17,7 @@ from tqdm.asyncio import tqdm_asyncio as tqdm
 from src.config.config import Config
 from src.db.geometadb_update_job_repository import GEOmetadbUpdateJobRepository
 from src.db.geoparse_to_geometadb import format_geoparse_metadata
-from src.db.get_geo_accessions_for_dates import get_geo_ids
+from src.db.get_geo_accessions_for_dates import get_gse_ids_by_last_update_date
 from src.db.gse import GSE
 from src.db.gse_repository import GSERepository
 from src.helpers.is_gzip_vaild import is_gzip_valid
@@ -43,7 +43,8 @@ async def tqdm_gather(*fs, return_exceptions=False, **kwargs):
 
 
 class GEOmetadbBackfiller():
-    def __init__(self, config: Config, gse_repository: GSERepository, geometadb_update_job_repository: GEOmetadbUpdateJobRepository):
+    def __init__(self, config: Config, gse_repository: GSERepository,
+                 geometadb_update_job_repository: GEOmetadbUpdateJobRepository):
         self.dataset_parser_workers = config.dataset_parser_workers
         self.max_connections = config.max_ncbi_connections
         self.download_folder = config.dataset_download_folder
@@ -53,14 +54,15 @@ class GEOmetadbBackfiller():
         self.geometadb_update_job_repository = geometadb_update_job_repository
 
     @staticmethod
-    def get_ftp_path(gse_accession: str) -> str:
+    def get_download_url(gse_accession: str) -> str:
         """
-        Returns the FTP path for a given GSE accession.
+        Returns the download URL for a given GSE accession.
 
         :param gse_accession: GEO accession for the dataset (ex. GSE12345)
-        :return: FTP download link
+        :return: Download URL
         """
         return (
+            f"https://{GEO_FTP_HOST}/"
             f"geo/series/{gse_accession[:-3]}nnn/{gse_accession}/soft/"
             f"{gse_accession}_family.soft.gz"
         )
@@ -74,7 +76,7 @@ class GEOmetadbBackfiller():
         :param gse_accession: GEO accession number for the dataset (ex. GSE12345)
         :param executor: ProcessPoolExecutor to use for parsing.
         :param session: aiohttp ClientSession to use for downloading.
-        :param skip_existing: If the dataset already exists in the database, skip downloading and parsing it.
+        :param skip_existing: If the dataset already exists in the database, return it instead of downloading it again.
         :return: GSE object representing the dataset.
         """
         existing_dataset = await self.gse_repository.get_gses_async([gse_accession])
@@ -82,8 +84,7 @@ class GEOmetadbBackfiller():
             return existing_dataset[0]
 
         download_path = os.path.join(self.download_folder, f"{gse_accession}.soft.gz")
-        ftp_path = GEOmetadbBackfiller.get_ftp_path(gse_accession)
-        url = f"https://{GEO_FTP_HOST}/{ftp_path}"
+        url = GEOmetadbBackfiller.get_download_url(gse_accession)
         await self.download_gse_file(download_path, session, url)
 
         loop = asyncio.get_running_loop()
@@ -104,12 +105,14 @@ class GEOmetadbBackfiller():
         async with self.semaphore:
             try:
                 logger.info(f"Downloading: {url}")
-                async with session.get(url) as response:
-                    async with aiofiles.open(download_path, mode='wb') as dataset_archive:
-                        async for chunk in response.content.iter_chunked(1024 * 1024):
-                            await dataset_archive.write(chunk)
-                    if not await is_gzip_valid(download_path):
-                        raise gzip.BadGzipFile("Downloaded file is not a valid gzip file")
+                async with (
+                    session.get(url) as response,
+                    aiofiles.open(download_path, mode='wb') as dataset_archive
+                ):
+                    async for chunk in response.content.iter_chunked(1024 * 1024):
+                        await dataset_archive.write(chunk)
+                if not await is_gzip_valid(download_path):
+                    raise gzip.BadGzipFile("Downloaded file is not a valid gzip file")
                 logger.info(f"Finished downloading: {url}")
             except (aiohttp.ClientResponseError, aiohttp.ClientConnectionError, asyncio.TimeoutError) as e:
                 logger.exception(f"Network error downloading {url}: {e}")
@@ -143,7 +146,7 @@ class GEOmetadbBackfiller():
             raise e
 
     def backfill_geometadb(self, start_date: datetime.datetime, end_date: datetime.datetime, skip_existing=True,
-                       ignore_failures=False):
+                           ignore_failures=False):
         """
         Downloads GEO datasets from the given date range and saves them to the
         geometadb database.
@@ -154,7 +157,7 @@ class GEOmetadbBackfiller():
         :param ignore_failures: If True, datasets that fail to download will be ignored.
         :return: List of downloaded GEO datasets from the given timeframe.
         """
-        gse_accessions = get_geo_ids(start_date, end_date)
+        gse_accessions = get_gse_ids_by_last_update_date(start_date, end_date)
         job = self.geometadb_update_job_repository.create_update_job(gse_accessions, start_date, end_date)
 
         async def set_gse_update_status(gse_acc: str, success: bool, error: Exception = None):
@@ -162,7 +165,8 @@ class GEOmetadbBackfiller():
             await self.geometadb_update_job_repository.set_gse_update_status_async(job.id, gse_acc, status)
 
         try:
-            backfilled_gses = asyncio.run(self.download_datasets(gse_accessions, skip_existing, ignore_failures, on_dataset_complete=set_gse_update_status), debug=True)
+            backfilled_gses = asyncio.run(self.download_datasets(gse_accessions, skip_existing, ignore_failures,
+                                                                 on_dataset_complete=set_gse_update_status), debug=True)
             self.geometadb_update_job_repository.set_job_status(job.id, "successful")
             return backfilled_gses
         except KeyboardInterrupt as e:
@@ -172,8 +176,8 @@ class GEOmetadbBackfiller():
             self.geometadb_update_job_repository.set_job_status(job.id, "failed")
             raise e
 
-
-    async def download_datasets(self, gse_accessions: List[str], skip_existing=True, ignore_failures=False, on_dataset_complete=None):
+    async def download_datasets(self, gse_accessions: List[str], skip_existing=True, ignore_failures=False,
+                                on_dataset_complete=None):
         """
         Downloads GEO datasets asynchronously and adds them to the geometadb database.
 
@@ -190,8 +194,10 @@ class GEOmetadbBackfiller():
             async with aiohttp.ClientSession(raise_for_status=True,
                                              timeout=aiohttp.ClientTimeout(total=None, sock_connect=10,
                                                                            sock_read=10)) as session:
-                tasks = [self._download_dataset_with_callback(acc, executor, session, skip_existing, on_dataset_complete) for acc in
-                         gse_accessions]
+                tasks = [
+                    self._download_dataset_with_callback(acc, executor, session, skip_existing, on_dataset_complete) for
+                    acc in
+                    gse_accessions]
                 datasets = await tqdm_gather(*tasks,
                                              return_exceptions=ignore_failures) if self.show_progress else await asyncio.gather(
                     *tasks, return_exceptions=ignore_failures)
@@ -212,7 +218,8 @@ class GEOmetadbBackfiller():
         except Exception as e:
             if callback:
                 await callback(gse_accession, success=False, error=e)
-            raise
+            raise e
+
 
 if __name__ == '__main__':
     import argparse
