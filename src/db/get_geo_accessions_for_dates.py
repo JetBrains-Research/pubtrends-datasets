@@ -25,6 +25,7 @@ def url_open(url, timeout=2, n_trials=5, sleep_time=2):
             time.sleep(sleep_time)
     raise latest_exception
 
+
 def _get_geo_ids_batch(start_date: datetime.date, end_date: datetime.date) -> List[str]:
     """
     Find GSE which were last updated during given period, but up to 50000 GSEs per request.
@@ -44,6 +45,7 @@ def _get_geo_ids_batch(start_date: datetime.date, end_date: datetime.date) -> Li
         gse_ids.append(gds_pattern.sub('GSE', elem.text))
     return gse_ids
 
+
 def get_gse_ids_by_last_update_date(start_date: datetime.date, end_date: datetime.date) -> List[str]:
     """
     Find GSE which were last updated during given period.
@@ -60,8 +62,6 @@ def get_gse_ids_by_last_update_date(start_date: datetime.date, end_date: datetim
     for start_date, end_date in date_batches:
         gse_ids.extend(_get_geo_ids_batch(start_date, end_date))
     return list(set(gse_ids))
-
-
 
 
 if __name__ == "__main__":

@@ -31,7 +31,8 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         self.mock_get_running_loop.return_value.run_in_executor = AsyncMock()
         self.mock_get_running_loop.return_value.run_in_executor.side_effect = lambda executor, func, *args: func(*args)
 
-        self.backfiller = GEOmetadbBackfiller(self.test_config, self.gse_repository, self.geometadb_update_job_repository)
+        self.backfiller = GEOmetadbBackfiller(self.test_config, self.gse_repository,
+                                              self.geometadb_update_job_repository)
         self.start_date = datetime.datetime(2025, 1, 1)
         self.end_date = datetime.datetime(2025, 1, 2)
 
@@ -99,7 +100,6 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         self.mock_aiohttp_get.assert_called_once()
         mock_get_geo.assert_called_once()
         self._assert_update_job_created()
-
 
     def test_backfill_geometadb_invalid_date_range(self):
         pass

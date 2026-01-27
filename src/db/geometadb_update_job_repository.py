@@ -100,7 +100,7 @@ class GEOmetadbUpdateJobRepository:
         Sets the status of a GSE update record.
         :param job_id: Job ID.
         :param gse_accession: GEO accession number of the updated dataset.
-        :status: New status. Must be one of "pending", "complete" or "failed".
+        :param status: New status. Must be one of "pending", "complete" or "failed".
         """
         try:
             async with self.semaphore:

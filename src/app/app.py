@@ -178,7 +178,7 @@ def get_update_jobs():
               type: string
     """
     logger.info(f'/update-jobs {log_request(request)}')
-    
+
     try:
         jobs = update_job_repository.get_all_jobs()
         result = [{
@@ -188,9 +188,9 @@ def get_update_jobs():
             "last_update_date_start": job.last_update_date_start.isoformat() if job.last_update_date_start else None,
             "last_update_date_end": job.last_update_date_end.isoformat() if job.last_update_date_end else None
         } for job in jobs]
-        
+
         return jsonify(result)
-        
+
     except Exception as e:
         logger.exception(f'/update-jobs exception {e}')
         return jsonify({"error": str(e)}), 500
@@ -250,21 +250,21 @@ def get_job_updates(job_id):
               type: string
     """
     logger.info(f'/update-jobs/{job_id}/updates {log_request(request)}')
-    
+
     try:
         # Check if job exists
         job = update_job_repository.get_job_by_id(job_id)
         if not job:
             return jsonify({"error": "Job not found"}), 404
-        
+
         updates = update_job_repository.get_gse_updates(job_id)
         result = [{
             "gse_acc": update.gse_acc,
             "status": update.status
         } for update in updates]
-        
+
         return jsonify(result)
-        
+
     except Exception as e:
         logger.exception(f'/update-jobs/{job_id}/updates exception {e}')
         return jsonify({"error": str(e)}), 500

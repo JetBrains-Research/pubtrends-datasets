@@ -5,8 +5,10 @@ import logging
 GEOMETADB_SEPARATOR = ";\t"
 logger = logging.getLogger(__name__)
 
+
 def get_geometadb_dict(geoparse_gse: GSE) -> Dict:
     return format_geoparse_metadata(geoparse_gse.metadata)
+
 
 def format_geoparse_metadata(geoparse_metadata: Dict) -> Dict:
     """

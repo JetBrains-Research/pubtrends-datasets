@@ -34,8 +34,7 @@ class TestNCBIGSELoader(unittest.TestCase):
         ([], []),
         (["GSE100", "GSE200"], ["GSE100", "GSE200"]),
     ])
-    @patch("src.db.gse_repository.sqlite3.connect")
-    def test_load_gses_success(self, gse_accessions: List[str], expected_ids: List[str], mock_sql):
+    def test_load_gses_success(self, gse_accessions: List[str], expected_ids: List[str]):
         self.mock_session.get.side_effect = [self._make_ok_response(accession) for accession in gse_accessions]
 
         gses: List[GSE] = self.loader.get_gses(gse_accessions)

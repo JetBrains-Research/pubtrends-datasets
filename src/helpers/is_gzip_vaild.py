@@ -2,6 +2,7 @@ import aiogzip
 import gzip
 import zlib
 
+
 async def is_gzip_valid(path):
     """
     Checks if a gzip file is valid.
@@ -19,4 +20,3 @@ async def is_gzip_valid(path):
     except (FileNotFoundError, PermissionError, OSError):
         # File cannot be opened or accessed
         return False
-

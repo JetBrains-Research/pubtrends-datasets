@@ -42,7 +42,7 @@ async def tqdm_gather(*fs, return_exceptions=False, **kwargs):
     return await tqdm.gather(*map(wrap, fs), **kwargs)
 
 
-class GEOmetadbBackfiller():
+class GEOmetadbBackfiller:
     def __init__(self, config: Config, gse_repository: GSERepository,
                  geometadb_update_job_repository: GEOmetadbUpdateJobRepository):
         self.dataset_parser_workers = config.dataset_parser_workers

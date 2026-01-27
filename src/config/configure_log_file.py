@@ -1,6 +1,7 @@
 import logging
 import os
 
+
 def configure_log_file():
     LOG_PATHS = ['/logs', os.path.expanduser('~/.pubtrends-datasets/logs')]
     for p in LOG_PATHS:
