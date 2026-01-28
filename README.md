@@ -36,6 +36,13 @@ Flags:
 - `--ignore-failures` - Continue processing even if dataset updates fail.
 - `--skip-existing` - Skip datasets already present in the local database
 
+To keep the database up to date, we suggest adding the following cron job via `crontab -e`:
+```aiignore
+0 23 * * * cd <path to this repository> && /home/<username>/.local/bin/uv --project run python -m src.db.backfill_geometadb --ignore-failures $(date -d "now-2 days" "+\%Y-\%m-\%d")
+```
+>[!NOTE]
+> It seems that GEO datasets published within the last 24 hours are not indexed by ESearch. As a result, these datasets cannot be downloaded using the backfilling tool.
+
 ### Configuration
 Tweak these properties in `config.properties` to optimize performance on your hardware:
   - `max_ncbi_connections` - Maximum concurrent connections to NCBI's FTP server
