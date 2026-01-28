@@ -1,0 +1,37 @@
+"""Job and GSE update statuses
+
+Revision ID: 465aed4fb5e2
+Revises: f649d69d236a
+Create Date: 2026-01-21 13:14:23.423600
+
+"""
+from alembic import op
+import sqlalchemy as sa
+
+# revision identifiers, used by Alembic.
+revision = '465aed4fb5e2'
+down_revision = 'f649d69d236a'
+branch_labels = None
+depends_on = None
+
+
+def upgrade():
+    with op.batch_alter_table('gse_update', schema=None) as batch_op:
+        batch_op.add_column(sa.Column('status', sa.String(), nullable=True))
+        batch_op.drop_column('completed')
+
+    with op.batch_alter_table('gse_update_association', schema=None) as batch_op:
+        batch_op.add_column(sa.Column('status', sa.String(), nullable=True))
+
+    # ### end Alembic commands ###
+
+
+def downgrade():
+    with op.batch_alter_table('gse_update_association', schema=None) as batch_op:
+        batch_op.drop_column('status')
+
+    with op.batch_alter_table('gse_update', schema=None) as batch_op:
+        batch_op.add_column(sa.Column('completed', sa.BOOLEAN(), nullable=True))
+        batch_op.drop_column('status')
+
+    # ### end Alembic commands ###

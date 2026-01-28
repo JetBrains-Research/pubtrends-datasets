@@ -21,6 +21,47 @@ This script will install the prerequisite packages using the [uv](https://github
 
 After the script finishes, please edit and copy the `config.properties` file to `~/.pubtrends-datasets/config.properties`.
 
+## GEO dataset downloading and processing
+
+Use the geometadb backfilling tool to synchronize the database with currently available GEO datasets:
+```aiignore
+# Backfill from March 6, 2024 (geometadb cutoff date), to the current date
+uv run python -m src.db.backfill_geometadb 2024-03-06 --ignore-failures
+```
+Positional arguments:
+- `start_date` - Start of the date range for which to download datasets
+- `end_date` - End of the date range for which to download datasets (default: today)
+ 
+Flags:
+- `--ignore-failures` - Continue processing even if dataset updates fail.
+- `--skip-existing` - Skip datasets already present in the local database
+
+To keep the database up to date, we suggest adding the following cron job via `crontab -e`:
+```aiignore
+0 23 * * * cd <path to this repository> && /home/<username>/.local/bin/uv --project run python -m src.db.backfill_geometadb --ignore-failures $(date -d "now-2 days" "+\%Y-\%m-\%d")
+```
+>[!NOTE]
+> It seems that GEO datasets published within the last 24 hours are not indexed by ESearch. As a result, these datasets cannot be downloaded using the backfilling tool.
+
+### Configuration
+Tweak these properties in `config.properties` to optimize performance on your hardware:
+  - `max_ncbi_connections` - Maximum concurrent connections to NCBI's FTP server
+  - `dataset_parser_workers` - Number of parallel worker processes for parsing
+
+>[!WARNING]
+> RAM Management: `High dataset_parser_workers` counts can lead to RAM exhaustion when parsing large files. It is recommended to start with one or two workers and monitor usage before scaling up.
+ 
+To customize the backfilling process, change these properties:
+  - `dataset_download_folder` - Path for storing downloaded datasets
+  - `show_backfill_progress` - Boolean to toggle the CLI progress bar.
+
+## Database migration
+
+Database migrations are managed using `flask-migrate`. To migrate the database to the newest version, run:
+```aiignore
+uv run flask --app src.app.app db upgrade
+```
+
 ## Launch instructions
 
 You can start the app using this command:
@@ -48,6 +89,7 @@ docker run --rm --platform linux/amd64 \
 --volume=$(pwd)/src:/pubtrends-datasets/src \
 --volume=$(pwd)/pyproject.toml:/pubtrends-datasets/pyproject.toml \
 --volume=$(pwd)/uv.lock:/pubtrends-datasets/uv.lock \
+--volume=$(pwd)/resources/docker/test/test.config.properties:/home/user/.pubtrends-datasets/config.properties \
 -i -t biolabs/pubtrends-datasets-test \
 /bin/bash -c "cd /pubtrends-datasets; uv sync --locked; uv run python -m unittest discover src/test"
 ```

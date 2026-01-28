@@ -15,7 +15,9 @@ from src.test.helpers.http import create_mock_response
 class TestNCBIGSELoader(unittest.TestCase):
     def setUp(self):
         self.mock_session = Mock()
-        self.loader = NCBIGSELoader(self.mock_session, Config(test=True))
+        self.test_config = Config(test=True)
+        self.repository = Mock()
+        self.loader = NCBIGSELoader(self.mock_session, self.repository)
 
     @staticmethod
     def _make_ok_response(gse_accession: str):
@@ -32,30 +34,23 @@ class TestNCBIGSELoader(unittest.TestCase):
         ([], []),
         (["GSE100", "GSE200"], ["GSE100", "GSE200"]),
     ])
-    @patch("src.db.ncbi_gse_loader.sqlite3.connect")
-    def test_load_gses_success(self, gse_accessions: List[str], expected_ids: List[str], mock_sql):
-        mock_conn = mock_sql.return_value.__enter__.return_value
-        mock_cursor = mock_conn.cursor.return_value
-        executemany_mock = mock_cursor.executemany
-        executemany_mock.side_effect = None
-        executemany_mock.return_value = None
-
+    def test_load_gses_success(self, gse_accessions: List[str], expected_ids: List[str]):
         self.mock_session.get.side_effect = [self._make_ok_response(accession) for accession in gse_accessions]
 
-        gses: List[GSE] = self.loader.load_gses(gse_accessions)
+        gses: List[GSE] = self.loader.get_gses(gse_accessions)
         gse_ids = [g.gse for g in gses]
         self.assertListEqual(gse_ids, expected_ids)
 
         self.assertEqual(self.mock_session.get.call_count, len(gse_accessions))
-        self.assertEqual(executemany_mock.call_count, 1)
-        sql_args, kwargs = executemany_mock.call_args
-        self.assertEqual(len(sql_args[1]), len(gse_accessions))
+        self.assertEqual(self.repository.save_gses.call_count, 1)
+        save_args, _ = self.repository.save_gses.call_args
+        self.assertEqual(len(save_args[0]), len(gse_accessions))
 
     def test_load_gses_http_error(self):
         self.mock_session.get.return_value = self._make_error_response()
 
         with self.assertRaises(GEOError):
-            self.loader.load_gses(["GSE12345"])
+            self.loader.get_gses(["GSE12345"])
 
         self.mock_session.get.assert_called_once()
 
@@ -65,6 +60,6 @@ class TestNCBIGSELoader(unittest.TestCase):
         self.mock_session.get.side_effect = req_exc
 
         with self.assertRaises(GEOError):
-            self.loader.load_gses(["GSE99999"])
+            self.loader.get_gses(["GSE99999"])
 
         self.mock_session.get.assert_called_once()
