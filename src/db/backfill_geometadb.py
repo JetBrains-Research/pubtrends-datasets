@@ -157,6 +157,8 @@ class GEOmetadbBackfiller:
         :param ignore_failures: If True, datasets that fail to download will be ignored.
         :return: List of downloaded GEO datasets from the given timeframe.
         """
+        if end_date < start_date:
+            raise ValueError("End date must be after start date")
         gse_accessions = get_gse_ids_by_last_update_date(start_date, end_date)
         job = self.geometadb_update_job_repository.create_update_job(gse_accessions, start_date, end_date)
 

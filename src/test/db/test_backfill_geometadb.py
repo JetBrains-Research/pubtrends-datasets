@@ -102,4 +102,4 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         self._assert_update_job_created()
 
     def test_backfill_geometadb_invalid_date_range(self):
-        pass
+        self.assertRaises(ValueError, self.backfiller.backfill_geometadb, self.end_date, self.start_date)
