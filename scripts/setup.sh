@@ -1,6 +1,7 @@
 #!/bin/bash
-# At the time of writing, the Wayback Machine link is faster than the official link
 GEOMETADB_DOWNLOAD_LINK='https://gbnci.cancer.gov/geo/GEOmetadb.sqlite.gz'
+# Alternative download link
+# GEOMETADB_DOWNLOAD_LINK='https://web.archive.org/web/20250222142049/https://gbnci.cancer.gov/geo/GEOmetadb.sqlite.gz'
 
 
 echo '1. Setting up environment'
