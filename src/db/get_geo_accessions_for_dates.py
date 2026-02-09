@@ -5,6 +5,7 @@ import datetime
 from typing import List
 from urllib.request import urlopen, URLError
 
+ESEARCH_BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 
 def url_open(url, timeout=2, n_trials=5, sleep_time=2):
     """
@@ -35,8 +36,8 @@ def _get_geo_ids_batch(start_date: datetime.date, end_date: datetime.date) -> Li
     """
     start_date_str = start_date.strftime("%Y/%m/%d")
     end_date_str = end_date.strftime("%Y/%m/%d")
-    xml_url = f'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=gds&term={start_date_str}:{end_date_str}[UDAT' \
-              f']+AND+(gse[ETYP]+OR+gds[ETYP])&retmax=50000&usehistory=y '
+    xml_url = f"{ESEARCH_BASE_URL}?db=gds&term={start_date_str}:{end_date_str}[UDAT" \
+              f"]+AND+(gse[ETYP]+OR+gds[ETYP])&retmax=50000&usehistory=y "
     gds_ids = url_open(xml_url).read()
     gds_tree = ET.fromstring(gds_ids)
     gds_pattern = re.compile(r'^20+')
