@@ -21,6 +21,14 @@ This script will install the prerequisite packages using the [uv](https://github
 
 After the script finishes, please edit and copy the `config.properties` file to `~/.pubtrends-datasets/config.properties`.
 
+## Database migration
+
+Database migrations are managed using `flask-migrate`. To migrate the database to the newest version, run:
+```aiignore
+uv run flask --app src.app.app db upgrade
+```
+The migrations need to be applied manually after the initial setup and whenever the database schema changes.
+
 ## GEO dataset downloading and processing
 
 Use the geometadb backfilling tool to synchronize the database with currently available GEO datasets:
@@ -54,13 +62,6 @@ Tweak these properties in `config.properties` to optimize performance on your ha
 To customize the backfilling process, change these properties:
   - `dataset_download_folder` - Path for storing downloaded datasets
   - `show_backfill_progress` - Boolean to toggle the CLI progress bar.
-
-## Database migration
-
-Database migrations are managed using `flask-migrate`. To migrate the database to the newest version, run:
-```aiignore
-uv run flask --app src.app.app db upgrade
-```
 
 ## Launch instructions
 
