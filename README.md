@@ -27,7 +27,7 @@ Database migrations are managed using `flask-migrate`. To migrate the database t
 ```aiignore
 uv run flask --app src.app.app db upgrade
 ```
-The migrations need to be applied manually after the initial setup and whenever the database schema changes.
+The migrations need to be applied manually whenever the database schema changes.
 
 ## GEO dataset downloading and processing
 

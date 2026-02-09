@@ -8,6 +8,7 @@ uv sync
 
 echo '2. Generating test sample of GEOmetadb'
 ./scripts/create_test_sample.sh src/test/db/testgeometadb.sql
+test_geometadb_path=~/geodatasets/testgeometadb.sqlite
 sed -i "s|^test_geometadb_path\\s*=\\s*.*|test_geometadb_path = ${test_geometadb_path}|" config.properties
 
 echo '3. Setting up GEOmetadb SQLite database'
@@ -50,6 +51,9 @@ if [ ! -d "$dataset_path" ]; then
     mkdir -p "$dataset_path"
 fi
 sed -i "s|^dataset_download_folder\\s*=\\s*.*|dataset_download_folder = ${dataset_path}|" config.properties
+
+echo '6. Applying database migrations'
+uv run flask --app src.app.app db upgrade
 
 echo 'Setup finished'
 echo 'Please copy the config.properties file to ~/.pubtrends-datasets before running the app'
