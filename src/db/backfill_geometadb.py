@@ -15,7 +15,6 @@ from tenacity import retry, stop_after_attempt
 from tqdm.asyncio import tqdm_asyncio as tqdm
 
 from src.config.config import Config
-from src.db.geometadb_update_job_repository import GEOmetadbUpdateJobRepository
 from src.db.geoparse_to_geometadb import format_geoparse_metadata
 from src.db.get_geo_accessions_for_dates import get_gse_ids_by_last_update_date
 from src.db.gse import GSE
@@ -43,15 +42,13 @@ async def tqdm_gather(*fs, return_exceptions=False, **kwargs):
 
 
 class GEOmetadbBackfiller:
-    def __init__(self, config: Config, gse_repository: GSERepository,
-                 geometadb_update_job_repository: GEOmetadbUpdateJobRepository):
+    def __init__(self, config: Config, gse_repository: GSERepository):
         self.dataset_parser_workers = config.dataset_parser_workers
         self.max_connections = config.max_ncbi_connections
         self.download_folder = config.dataset_download_folder
         self.gse_repository = gse_repository
         self.semaphore = asyncio.Semaphore(self.max_connections)
         self.show_progress = config.show_backfill_progress
-        self.geometadb_update_job_repository = geometadb_update_job_repository
 
     @staticmethod
     def get_download_url(gse_accession: str) -> str:
@@ -160,22 +157,14 @@ class GEOmetadbBackfiller:
         if end_date < start_date:
             raise ValueError("End date must be after start date")
         gse_accessions = get_gse_ids_by_last_update_date(start_date, end_date)
-        job = self.geometadb_update_job_repository.create_update_job(gse_accessions, start_date, end_date)
-
-        async def set_gse_update_status(gse_acc: str, success: bool, error: Exception = None):
-            status = "successful" if success else "failed"
-            await self.geometadb_update_job_repository.set_gse_update_status_async(job.id, gse_acc, status)
 
         try:
             backfilled_gses = asyncio.run(self.download_datasets(gse_accessions, skip_existing, ignore_failures,
-                                                                 on_dataset_complete=set_gse_update_status), debug=True)
-            self.geometadb_update_job_repository.set_job_status(job.id, "successful")
+                                                                 ), debug=True)
             return backfilled_gses
         except KeyboardInterrupt as e:
-            self.geometadb_update_job_repository.set_job_status(job.id, "cancelled")
             raise e
         except Exception as e:
-            self.geometadb_update_job_repository.set_job_status(job.id, "failed")
             raise e
 
     async def download_datasets(self, gse_accessions: List[str], skip_existing=True, ignore_failures=False,
@@ -197,7 +186,7 @@ class GEOmetadbBackfiller:
                                              timeout=aiohttp.ClientTimeout(total=None, sock_connect=10,
                                                                            sock_read=10)) as session:
                 tasks = [
-                    self._download_dataset_with_callback(acc, executor, session, skip_existing, on_dataset_complete) for
+                    self.download_dataset(acc, executor, session, skip_existing) for
                     acc in
                     gse_accessions]
                 datasets = await tqdm_gather(*tasks,
@@ -211,17 +200,6 @@ class GEOmetadbBackfiller:
                 logger.error(f"Failed to download dataset: {gse}")
         return [gse for gse in datasets if not isinstance(gse, Exception)]
 
-    async def _download_dataset_with_callback(self, gse_accession, executor, session, skip_existing, callback):
-        try:
-            result = await self.download_dataset(gse_accession, executor, session, skip_existing)
-            if callback:
-                await callback(gse_accession, success=True, error=None)
-            return result
-        except Exception as e:
-            if callback:
-                await callback(gse_accession, success=False, error=e)
-            raise e
-
 
 if __name__ == '__main__':
     import argparse
@@ -230,7 +208,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
         prog="GEOmetadb backfiller",
-    description="Downloads GEO datasets that were last updated in the given date range and saves them to the geometadb database."
+        description="Downloads GEO datasets that were last updated in the given date range and saves them to the geometadb database."
     )
     parser.add_argument(
         'start_date',
