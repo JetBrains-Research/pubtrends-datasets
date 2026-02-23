@@ -5,7 +5,6 @@ from src.db.gsm import GSM
 
 TEST_GSEs = [
     GSE(
-        ID=110771.0,
         title="In vivo molecular signatures of severe dengue infection revealed by viscRNA-Seq",
         gse="GSE116672",
         status="Public on Nov 19 2018",
@@ -25,7 +24,6 @@ TEST_GSEs = [
         supplementary_file="ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE116nnn/GSE116672/suppl/GSE116672_RAW.tar"
     ),
     GSE(
-        ID=121389.0,
         title="The major risk factors for Alzheimer's disease: Age, Sex and Genes, modulate the microglia response to Aβ plaques (CDEP)",
         gse="GSE127884",
         status="Public on Apr 23 2019",
@@ -45,7 +43,6 @@ TEST_GSEs = [
         supplementary_file="ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE127nnn/GSE127884/suppl/GSE127884_microglia.cdep.SeuratNorm.tsv.gz; ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE127nnn/GSE127884/suppl/GSE127884_microglia.cdep.meta.csv.gz;   ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE127nnn/GSE127884/suppl/GSE127884_microglia.cdep.raw.tsv.gz"
     ),
     GSE(
-        ID=121397.0,
         title="The major risk factors for Alzheimer's disease: Age, Sex and Genes, modulate the microglia response to Aβ plaques (KW)",
         gse="GSE127892",
         status="Public on Apr 23 2019",
@@ -65,7 +62,6 @@ TEST_GSEs = [
         supplementary_file="ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE127nnn/GSE127892/suppl/GSE127892_microglia.kw.SeuratNorm.tsv.gz;   ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE127nnn/GSE127892/suppl/GSE127892_microglia.kw.meta.csv.gz; ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE127nnn/GSE127892/suppl/GSE127892_microglia.kw.raw.tsv.gz"
     ),
     GSE(
-        ID=121398.0,
         title="The major risk factors for Alzheimer's disease: Age, Sex and Genes, modulate the microglia response to Aβ plaques",
         gse="GSE127893",
         status="Public on Apr 23 2019",
@@ -85,7 +81,6 @@ TEST_GSEs = [
         supplementary_file=None
     ),
     GSE(
-        ID=130356.0,
         title="Stem cell derived human microglia transplanted in mouse brain to study human disease",
         gse="GSE137444",
         status="Public on Oct 16 2019",
@@ -105,7 +100,6 @@ TEST_GSEs = [
         supplementary_file="ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE137nnn/GSE137444/suppl/GSE137444_chimera_human_h9.tsv.gz;  ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE137nnn/GSE137444/suppl/GSE137444_chimera_mouse.tsv.gz; ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE137nnn/GSE137444/suppl/GSE137444_human_patient.tsv.gz; ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE137nnn/GSE137444/suppl/GSE137444_invitro_mh_mc.tsv.gz"
     ),
     GSE(
-        ID=138022.0,
         title="Single cell transcriptome from aplastic anemia (AA) and healthy donors [Full-length RNA-seq]",
         gse="GSE145531",
         status="Public on Mar 31 2021",
@@ -125,7 +119,6 @@ TEST_GSEs = [
         supplementary_file="ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE145nnn/GSE145531/suppl/GSE145531_Full_length_SingleCell_counts.txt.gz"
     ),
     GSE(
-        ID=138150.0,
         title="Single cell transcriptome from aplastic anemia (AA) and healthy donors [3' RNA-seq]",
         gse="GSE145668",
         status="Public on Mar 31 2021",
@@ -145,7 +138,6 @@ TEST_GSEs = [
         supplementary_file="ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE145nnn/GSE145668/suppl/GSE145668_AA_cells_counts.txt.gz;   ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE145nnn/GSE145668/suppl/GSE145668_Ctrl_cells_counts.txt.gz; ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE145nnn/GSE145668/suppl/GSE145668_Response_cells_counts.txt.gz"
     ),
     GSE(
-        ID=138151.0,
         title="Transcriptome analysis of HSPCs and T cells from aplastic anemia (AA) and healthy donors",
         gse="GSE145669",
         status="Public on Mar 31 2021",
@@ -165,7 +157,6 @@ TEST_GSEs = [
         supplementary_file=None
     ),
     GSE(
-        ID=138483.0,
         title="single cell RNA-seq analysis of ovarian cancer ascites",
         gse="GSE146026",
         status="Public on May 01 2020",
@@ -185,7 +176,6 @@ TEST_GSEs = [
         supplementary_file="ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE146nnn/GSE146026/suppl/GSE146026_Izar_HGSOC_ascites_10x_log.tsv.gz;    ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE146nnn/GSE146026/suppl/GSE146026_Izar_HGSOC_ascites_SS2_log.tsv.gz"
     ),
     GSE(
-        ID=156272.0,
         title="Bulk RNA-seq of aplastic anemia (AA) and healthy donors",
         gse="GSE165870",
         status="Public on Mar 31 2021",
@@ -205,7 +195,6 @@ TEST_GSEs = [
         supplementary_file="ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE165nnn/GSE165870/suppl/GSE165870_Full_length_bulk_counts.txt.gz"
     ),
     GSE(
-        ID=219747.0,
         title="Xenografted human microglia display diverse transcriptomic states in response to Alzheimer's disease-related Aβ pathology",
         gse="GSE216999",
         status="Public on Feb 29 2024",

@@ -1,43 +1,37 @@
 """Flask application for GEOmetadb dataset queries."""
 
 import json
-import logging
-import os
 from dataclasses import asdict
 
 import requests
 from flasgger import Swagger
 from flask import Flask, request, jsonify
+from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
 
 from src.app.swagger_template import swagger_template
 from src.config.config import Config
+from src.config.configure_log_file import configure_log_file
 from src.db.chained_dataset_linker import ChainedDatasetLinker
+from src.db.chained_gse_loader import ChainedGSELoader
 from src.db.elink_dataset_linker import ELinkDatasetLinker
 from src.db.europepmc_dataset_linker import EuropePMCDatasetLinker
-from src.db.geometadb_gse_loader import GEOmetadbGSELoader
+from src.db.gse_repository import GSERepository
+from src.db.mapper_registry import mapper_registry
 from src.db.ncbi_gse_loader import NCBIGSELoader
-from src.db.chained_gse_loader import ChainedGSELoader
 
 app = Flask(__name__)
 swagger = Swagger(app, template=swagger_template)
 CONFIG = Config(test=False)
+app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{CONFIG.geometadb_path}"
 
-geometadb_gse_loader = GEOmetadbGSELoader(CONFIG)
+db = SQLAlchemy(metadata=mapper_registry.metadata)
+db.init_app(app)
+migrate = Migrate(app, db)
 
-# Deployment and development
-LOG_PATHS = ['/logs', os.path.expanduser('~/.pubtrends-datasets/logs')]
-for p in LOG_PATHS:
-    if os.path.isdir(p):
-        logfile = os.path.join(p, 'app.log')
-        break
-else:
-    raise RuntimeError('Failed to configure main log file')
+gse_repository = GSERepository(CONFIG.geometadb_path)
 
-logging.basicConfig(filename=logfile,
-                    filemode='a',
-                    format='[%(asctime)s,%(msecs)03d: %(levelname)s/%(name)s] %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S',
-                    level=logging.INFO)
+configure_log_file()
 
 logger = app.logger
 
@@ -116,10 +110,10 @@ def get_datasets():
 
             # Load the GSE objects using a chain: GEOmetadb first, then NCBI for missing ones
             chained_loader = ChainedGSELoader(
-                geometadb_gse_loader,
-                NCBIGSELoader(http_session, CONFIG)
+                gse_repository,
+                NCBIGSELoader(http_session, gse_repository)
             )
-            gse_objects = chained_loader.load_gses(gse_accessions)
+            gse_objects = chained_loader.get_gses(gse_accessions)
 
             result = [asdict(gse) for gse in gse_objects]
 
