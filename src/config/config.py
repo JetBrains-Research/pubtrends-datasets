@@ -37,6 +37,8 @@ class Config:
         elif not os.path.isdir(self.dataset_download_folder):
             raise RuntimeError(f"{self.dataset_download_folder} is not a directory")
         self.show_backfill_progress = params.getboolean('show_backfill_progress') if not test else False
+        self.sentence_transformer_model = params['sentence_transformer_model']
+        self.embeddings_dimension = self._parse_positive_int(params, "embeddings_dimension")
 
     @staticmethod
     def _parse_positive_int(params, key):

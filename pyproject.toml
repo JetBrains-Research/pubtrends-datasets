@@ -3,7 +3,7 @@ name = "pubtrends-datasets"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 dependencies = [
     "aiofiles>=25.1.0",
     "aiogzip>=1.1.0",
@@ -22,4 +22,7 @@ dependencies = [
     "sqlacodegen>=3.2.0",
     "tenacity>=9.1.2",
     "tqdm>=4.67.1",
+    "faiss-cpu>=1.13.2",
+    "spacy>=3.8.11",
+    "pyarrow>=23.0.1",
 ]
