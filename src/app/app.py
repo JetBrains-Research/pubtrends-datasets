@@ -1,7 +1,6 @@
 """Flask application for GEOmetadb dataset queries."""
 
 import json
-import os
 from dataclasses import asdict
 
 import numpy as np
@@ -18,10 +17,7 @@ from src.db.elink_dataset_linker import ELinkDatasetLinker
 from src.db.europepmc_dataset_linker import EuropePMCDatasetLinker
 from src.db.gse_repository import GSERepository
 from src.db.ncbi_gse_loader import NCBIGSELoader
-from src.semantic_search.embeddings_service import fetch_texts_embedding
-from src.semantic_search.faiss_connector import FaissConnector
-from src.semantic_search.gse_indexer import GSEIndexer
-from src.semantic_search.semantic_search import SemanticSearch
+from src.semantic_search.semantic_search import rank_by_relevance
 
 app = Flask(__name__)
 swagger = Swagger(app, template=swagger_template)
@@ -33,8 +29,6 @@ gse_repository = GSERepository(CONFIG.geometadb_path)
 configure_log_file()
 
 logger = app.logger
-
-semantic_search = SemanticSearch(CONFIG)
 
 def log_request(r):
     return f'addr:{r.remote_addr} args:{json.dumps(r.args)}'
@@ -221,9 +215,8 @@ def get_relevant_datasets():
         return jsonify({"error": "At least one valid PubMed ID is required"}), 400
 
     try:
-        gse_objects = fetch_datasets_for_pubmed_ids(pubmed_ids)
-        gse_objects_ranked = semantic_search.rank_by_relevance(gse_objects, query)
-        return jsonify(gse_objects_ranked)
+        gses = fetch_datasets_for_pubmed_ids(pubmed_ids)
+        return jsonify(rank_by_relevance(gses, query))
     except Exception as e:
         logger.exception(f'/relevant_datasets exception {e}')
         return jsonify({"error": str(e)}), 500

@@ -1,5 +1,4 @@
 """Gene Expression Omnibus Series (GSE) data model."""
-
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -7,6 +6,7 @@ from src.db.mapper_registry import mapper_registry
 
 from sqlalchemy import Index, Integer, PrimaryKeyConstraint, REAL, Text, Column
 
+SUPERSERIES_SUMMARY = "This SuperSeries is composed of the SubSeries listed below."
 
 @mapper_registry.mapped
 @dataclass
@@ -37,3 +37,6 @@ class GSE:
     variable_description: Optional[str] = field(default=None, metadata={"sa": Column(Text)})
     contact: Optional[str] = field(default=None, metadata={"sa": Column(Text)})
     supplementary_file: Optional[str] = field(default=None, metadata={"sa": Column(Text)})
+
+    def is_superseries(self):
+        return self.summary == SUPERSERIES_SUMMARY
