@@ -1,4 +1,5 @@
 import logging
+from typing import Iterable
 
 import spacy
 
@@ -10,6 +11,7 @@ NLP = spacy.load("en_core_web_sm")
 SUPERSERIES_SUMMARY = "This SuperSeries is composed of the SubSeries listed below."
 logger = logging.getLogger(__name__)
 
+
 class GSEIndexer:
     def __init__(self, faiss_connector: FaissConnector):
         self.faiss_connector = faiss_connector
@@ -18,20 +20,18 @@ class GSEIndexer:
     def is_superseries(gse: GSE):
         return gse.summary == SUPERSERIES_SUMMARY
 
-    def store_in_index(self, gse: GSE):
-        logger.info(f'Indexing GSE {gse.gse}')
-        chunks, gse_acc = self.get_gse_chunks(gse)
-        index = [(gse_acc, chunk) for chunk in chunks]
-        embeddings = fetch_texts_embedding(chunks)
+    def store_in_index(self, gses: Iterable[GSE]):
+        index = [(chunk, gse.gse) for gse in gses for chunk in self.chunk(gse)]
+        embeddings = fetch_texts_embedding([entry[0] for entry in index])
         self.faiss_connector.store_embeddings(index, embeddings)
         self.faiss_connector.save()
 
-    def get_gse_chunks(self, gse: GSE):
+    def chunk(self, gse: GSE):
         chunks = [gse.title]
         if not self.is_superseries(gse):
             chunks.extend(GSEIndexer.get_chunks(gse.summary))
             chunks.extend(GSEIndexer.get_chunks(gse.overall_design))
-        return chunks, gse.gse
+        return chunks
 
     @staticmethod
     def get_chunks(text, max_tokens=128, overlap_sentences=1):
@@ -82,7 +82,3 @@ class GSEIndexer:
             chunk_text = ' '.join([s.text for s in current_chunk_sentences])
             chunks.append(chunk_text)
         return chunks
-
-    @staticmethod
-    def chunk(gse: GSE):
-        chunks = []

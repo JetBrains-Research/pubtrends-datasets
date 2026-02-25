@@ -12,6 +12,7 @@ from src.semantic_search.gse_indexer import GSEIndexer
 
 logger = logging.getLogger(__name__)
 
+
 def l2norm(v):
     norm = np.linalg.norm(v)
     if norm == 0:
@@ -19,8 +20,10 @@ def l2norm(v):
     v /= norm
     return v
 
+
 def stable_deduplicate(iterable):
     return list(dict.fromkeys(iterable))
+
 
 def semantic_search_faiss_embedding(faiss_index, gses_idx, query_embedding, k):
     # Normalize embeddings if using cosine similarity
@@ -42,6 +45,7 @@ def semantic_search_faiss_embedding(faiss_index, gses_idx, query_embedding, k):
     # Workaround for correct gse_ids index table
     return t[['gse_acc', 'chunk', 'similarity']]
 
+
 class SemanticSearch():
     def __init__(self, config: Config):
         self.faiss_connector = FaissConnector("geo", config.sentence_transformer_model, config.embeddings_dimension)
@@ -49,9 +53,8 @@ class SemanticSearch():
 
     def rank_by_relevance(self, gses: Iterable[GSE], query: str) -> List[GSE]:
         faiss_index = self.faiss_connector.faiss_index
-        for gse in gses:
-            if not self.is_gse_in_index(gse.gse):
-                self.indexer.store_in_index(gse)
+        gses_to_index = [gse for gse in gses if not self.is_gse_in_index(gse.gse)]
+        self.indexer.store_in_index(gses_to_index)
 
         gse_accs = [gse.gse for gse in gses]
         k = faiss_index.ntotal
@@ -62,8 +65,6 @@ class SemanticSearch():
 
         gse_dict = {gse.gse: gse for gse in gses}
         return [gse_dict[gse_acc] for gse_acc in ranked_gse_accs]
-
-
 
     def _search_raw(self, text, n):
         embeddings_func = lambda t: fetch_texts_embedding([t])[0]
