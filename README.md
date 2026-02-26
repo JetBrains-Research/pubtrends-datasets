@@ -8,13 +8,13 @@ Datasets integration for PubTrends
 ## Prerequisites
 
 - Python 3
-- Conda
+- uv
 
 ## Setup instructions
 
 To set up the project, run the `setup.sh` script:
 ```
-./setup.sh
+./scripts/setup.sh
 ```
 
 This script will install the prerequisite packages using the [uv](https://github.com/astral-sh/uv) package manager and configure the project.
