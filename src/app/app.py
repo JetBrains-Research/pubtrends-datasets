@@ -186,8 +186,6 @@ def get_relevant_datasets():
                 type: string
               pubmed_id:
                 type: integer
-              score:
-                type: number
       400:
         description: Bad request - missing or invalid inputs
     """
