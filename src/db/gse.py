@@ -8,6 +8,7 @@ from sqlalchemy import Index, Integer, PrimaryKeyConstraint, REAL, Text, Column
 
 SUPERSERIES_SUMMARY = "This SuperSeries is composed of the SubSeries listed below."
 
+
 @mapper_registry.mapped
 @dataclass
 class GSE:
