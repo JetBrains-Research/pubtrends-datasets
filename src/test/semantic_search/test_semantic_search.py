@@ -147,3 +147,7 @@ class TestSemanticSearch(unittest.TestCase):
         # Once for the query and another time for GSEs
         self.assertGreaterEqual(self.fetch_texts_embedding.call_count, 2)
         self.assertListEqual(result, expected_result)
+
+    def test_rank_by_relevance_empty_input(self):
+        result = self.semantic_search.rank_by_relevance([], "query")
+        self.assertEqual(result, [])
