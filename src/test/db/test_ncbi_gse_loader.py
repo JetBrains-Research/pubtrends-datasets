@@ -1,6 +1,6 @@
 import unittest
 from typing import List
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import requests
 from parameterized import parameterized
