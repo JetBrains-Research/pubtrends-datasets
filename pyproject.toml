@@ -23,5 +23,5 @@ dependencies = [
     "tenacity>=9.1.2",
     "tqdm>=4.67.1",
     "spacy>=3.8.11",
-    "pyarrow>=23.0.1",
+    "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
 ]
