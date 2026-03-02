@@ -230,7 +230,6 @@ if __name__ == '__main__':
 
     config = Config(test=False)
     gse_repository = GSERepository(config.geometadb_path)
-    geometadb_update_job_repository = GEOmetadbUpdateJobRepository(config.geometadb_path)
-    backfiller = GEOmetadbBackfiller(config, gse_repository, geometadb_update_job_repository)
+    backfiller = GEOmetadbBackfiller(config, gse_repository)
     backfiller.backfill_geometadb(args.start_date, args.end_date, args.skip_existing, args.ignore_failures)
     print("Done")
