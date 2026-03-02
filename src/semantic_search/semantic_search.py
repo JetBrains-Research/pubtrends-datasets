@@ -108,7 +108,7 @@ class SemanticSearcher:
         embeddings = np.array([embedding for embedding, _ in embeddings_with_gse])
         scores = cosine_similarity(query_embedding, embeddings)
 
-        gses_with_scores = list(zip(gses, scores))
+        gses_with_scores = [(embeddings_with_gse[i][1], scores[i]) for i in range(len(embeddings_with_gse))]
         ranked_gses_with_scores = sorted(gses_with_scores, key=lambda x: x[1], reverse=True)
         ranked_gses = [entry[0] for entry in ranked_gses_with_scores]
         return stable_deduplicate_gses(ranked_gses)
