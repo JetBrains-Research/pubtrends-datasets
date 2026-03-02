@@ -37,8 +37,9 @@ class Config:
         elif not os.path.isdir(self.dataset_download_folder):
             raise RuntimeError(f"{self.dataset_download_folder} is not a directory")
         self.show_backfill_progress = params.getboolean('show_backfill_progress') if not test else False
-        self.sentence_transformer_model = params['sentence_transformer_model']
-        self.embeddings_dimension = self._parse_positive_int(params, "embeddings_dimension")
+        self.embeddings_service_url = params['embeddings_service_url']
+        self.max_tokens_per_chunk = self._parse_nonnegative_int(params, 'max_tokens_per_chunk')
+        self.overlap_sentences = self._parse_nonnegative_int(params, 'overlap_sentences')
 
     @staticmethod
     def _parse_positive_int(params, key):
@@ -46,6 +47,16 @@ class Config:
             value = int(params[key])
             if value <= 0:
                 raise ValueError(f"{key} must be a positive integer")
+            return value
+        except ValueError as e:
+            raise ValueError(f"Invalid value for {key}: {params[key]}. {e}")
+
+    @staticmethod
+    def _parse_nonnegative_int(params, key):
+        try:
+            value = int(params[key])
+            if value < 0:
+                raise ValueError(f"{key} must be a non-negative integer")
             return value
         except ValueError as e:
             raise ValueError(f"Invalid value for {key}: {params[key]}. {e}")

@@ -3,7 +3,6 @@
 import json
 from dataclasses import asdict
 
-import numpy as np
 import requests
 from flasgger import Swagger
 from flask import Flask, request, jsonify
@@ -17,7 +16,7 @@ from src.db.elink_dataset_linker import ELinkDatasetLinker
 from src.db.europepmc_dataset_linker import EuropePMCDatasetLinker
 from src.db.gse_repository import GSERepository
 from src.db.ncbi_gse_loader import NCBIGSELoader
-from src.semantic_search.semantic_search import rank_by_relevance
+from src.semantic_search.semantic_search import SemanticSearcher
 
 app = Flask(__name__)
 swagger = Swagger(app, template=swagger_template)
@@ -25,6 +24,7 @@ CONFIG = Config(test=False)
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{CONFIG.geometadb_path}"
 
 gse_repository = GSERepository(CONFIG.geometadb_path)
+semantic_search = SemanticSearcher(CONFIG)
 
 configure_log_file()
 
@@ -32,15 +32,6 @@ logger = app.logger
 
 def log_request(r):
     return f'addr:{r.remote_addr} args:{json.dumps(r.args)}'
-
-
-def cosine_similarity(vector, matrix):
-    vector_norm = np.linalg.norm(vector)
-    matrix_norms = np.linalg.norm(matrix, axis=1)
-    if vector_norm == 0:
-        return np.zeros(matrix.shape[0])
-    safe_norms = np.where(matrix_norms == 0, 1.0, matrix_norms)
-    return (matrix @ vector) / (safe_norms * vector_norm)
 
 
 def fetch_datasets_for_pubmed_ids(pubmed_ids):
@@ -216,7 +207,7 @@ def get_relevant_datasets():
 
     try:
         gses = fetch_datasets_for_pubmed_ids(pubmed_ids)
-        return jsonify(rank_by_relevance(gses, query))
+        return jsonify(semantic_search.rank_by_relevance(gses, query))
     except Exception as e:
         logger.exception(f'/relevant_datasets exception {e}')
         return jsonify({"error": str(e)}), 500

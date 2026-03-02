@@ -4,6 +4,7 @@ from typing import List, Iterable
 import numpy as np
 import spacy
 
+from src.config.config import Config
 from src.db.gse import GSE
 from src.semantic_search.embeddings_service import fetch_texts_embedding
 
@@ -26,13 +27,13 @@ def stable_deduplicate_gses(iterable: Iterable[GSE]):
     return [x for x in iterable if not (x.gse in added or added.add(x.gse))]
 
 
-def get_chunks(text, max_tokens=128, overlap_sentences=1):
+def get_chunks(text, max_tokens_per_chunk=128, overlap_sentences=1):
     """
     Split text into a list of overlapping chunks.
 
     Args:
         text (str): The text to split into chunks
-        max_tokens (int): Maximum number of tokens per chunk
+        max_tokens_per_chunk (int): Maximum number of tokens per chunk
         overlap_sentences (int): Number of sentences to overlap between chunks
 
     Returns:
@@ -51,7 +52,7 @@ def get_chunks(text, max_tokens=128, overlap_sentences=1):
 
     for sentence in sentences:
         # If adding this sentence exceeds max_tokens, create a new chunk
-        if current_token_count + len(sentence) > max_tokens and current_chunk_sentences:
+        if current_token_count + len(sentence) > max_tokens_per_chunk and current_chunk_sentences:
             # Join the sentences in the current chunk
             chunk_text = ' '.join([s.text for s in current_chunk_sentences])
             chunks.append(chunk_text)
@@ -75,34 +76,39 @@ def get_chunks(text, max_tokens=128, overlap_sentences=1):
         chunks.append(chunk_text)
     return chunks
 
+class SemanticSearcher:
+    def __init__(self, config: Config):
+        self.max_tokens_per_chunk = config.max_tokens_per_chunk
+        self.overlap_sentences = config.overlap_sentences
+        self.embeddings_service_url = config.embeddings_service_url
 
-def chunk_gse(gse: GSE) -> List[str]:
-    chunks = [gse.title]
-    if not gse.is_superseries():
-        chunks.extend(get_chunks(gse.summary))
-        chunks.extend(get_chunks(gse.overall_design))
-    return chunks
-
-
-def embed_gses(gses: List[GSE]) -> list[tuple[np.ndarray, GSE]]:
-    chunks_with_gse = [(chunk, gse) for gse in gses for chunk in chunk_gse(gse)]
-
-    chunks = [chunk for chunk, _ in chunks_with_gse]
-    embeddings = fetch_texts_embedding(chunks)
-
-    result = [(embedding, gse) for embedding, (_, gse) in zip(embeddings, chunks_with_gse)]
-
-    return result
+    def chunk_gse(self, gse: GSE) -> List[str]:
+        chunks = [gse.title]
+        if not gse.is_superseries():
+            chunks.extend(get_chunks(gse.summary, self.max_tokens_per_chunk, self.overlap_sentences))
+            chunks.extend(get_chunks(gse.overall_design, self.max_tokens_per_chunk, self.overlap_sentences))
+        return chunks
 
 
-def rank_by_relevance(gses: List[GSE], query: str) -> List[GSE]:
-    query_embedding = fetch_texts_embedding([query])[0]
+    def embed_gses(self, gses: List[GSE]) -> list[tuple[np.ndarray, GSE]]:
+        chunks_with_gse = [(chunk, gse) for gse in gses for chunk in self.chunk_gse(gse)]
 
-    embeddings_with_gse = embed_gses(gses)
-    embeddings = np.array([embedding for embedding, _ in embeddings_with_gse])
-    scores = cosine_similarity(query_embedding, embeddings)
+        chunks = [chunk for chunk, _ in chunks_with_gse]
+        embeddings = fetch_texts_embedding(chunks, self.embeddings_service_url)
 
-    gses_with_scores = list(zip(gses, scores))
-    ranked_gses_with_scores = sorted(gses_with_scores, key=lambda x: x[1], reverse=True)
-    ranked_gses = [entry[0] for entry in ranked_gses_with_scores]
-    return stable_deduplicate_gses(ranked_gses)
+        result = [(embedding, gse) for embedding, (_, gse) in zip(embeddings, chunks_with_gse)]
+
+        return result
+
+
+    def rank_by_relevance(self, gses: List[GSE], query: str) -> List[GSE]:
+        query_embedding = fetch_texts_embedding([query], self.embeddings_service_url)[0]
+
+        embeddings_with_gse = self.embed_gses(gses)
+        embeddings = np.array([embedding for embedding, _ in embeddings_with_gse])
+        scores = cosine_similarity(query_embedding, embeddings)
+
+        gses_with_scores = list(zip(gses, scores))
+        ranked_gses_with_scores = sorted(gses_with_scores, key=lambda x: x[1], reverse=True)
+        ranked_gses = [entry[0] for entry in ranked_gses_with_scores]
+        return stable_deduplicate_gses(ranked_gses)
