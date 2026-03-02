@@ -38,6 +38,8 @@ class Config:
             raise RuntimeError(f"{self.dataset_download_folder} is not a directory")
         self.show_backfill_progress = params.getboolean('show_backfill_progress') if not test else False
         self.embeddings_service_url = params['embeddings_service_url']
+        if not self.embeddings_service_url.startswith('http'):
+            raise ValueError(f"Invalid embeddings_service_url: {self.embeddings_service_url}")
         self.max_tokens_per_chunk = self._parse_nonnegative_int(params, 'max_tokens_per_chunk')
         self.overlap_sentences = self._parse_nonnegative_int(params, 'overlap_sentences')
 
