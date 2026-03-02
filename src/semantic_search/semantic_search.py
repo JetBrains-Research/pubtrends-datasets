@@ -107,7 +107,7 @@ class SemanticSearcher:
         gses_with_scores = []
 
         for i in range(0, len(gses), batch_size):
-            embeddings_with_gse = self.embed_gses(gses)
+            embeddings_with_gse = self.embed_gses(gses[i:i + batch_size])
             embeddings = np.array([embedding for embedding, _ in embeddings_with_gse])
             scores = cosine_similarity(query_embedding, embeddings)
             gses_with_scores.extend([(embeddings_with_gse[i][1], scores[i]) for i in range(len(embeddings_with_gse))])
