@@ -15,9 +15,8 @@ def fetch_texts_embedding(texts, embeddings_service_url):
             json=texts,
             headers={'Accept': 'application/json'}
         )
-        if r.status_code == 200:
-            return np.array(r.json()).reshape(len(texts), -1)
-        logger.debug(f'Wrong response code {r.status_code}')
+        r.raise_for_status()
+        return np.array(r.json()).reshape(len(texts), -1)
     except Exception as e:
         logger.debug(f'Failed to fetch texts embeddings ${e}')
         raise e
