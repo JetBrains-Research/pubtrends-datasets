@@ -3,7 +3,6 @@ GEOMETADB_DOWNLOAD_LINK='https://gbnci.cancer.gov/geo/GEOmetadb.sqlite.gz'
 # Alternative download link
 # GEOMETADB_DOWNLOAD_LINK='https://web.archive.org/web/20250222142049/https://gbnci.cancer.gov/geo/GEOmetadb.sqlite.gz'
 
-
 echo '1. Setting up environment'
 uv sync
 
@@ -52,9 +51,6 @@ if [ ! -d "$dataset_path" ]; then
     mkdir -p "$dataset_path"
 fi
 sed -i "s|^dataset_download_folder\\s*=\\s*.*|dataset_download_folder = ${dataset_path}|" config.properties
-
-echo '6. Applying database migrations'
-uv run flask --app src.app.app db upgrade
 
 echo 'Setup finished'
 echo 'Please copy the config.properties file to ~/.pubtrends-datasets before running the app'
