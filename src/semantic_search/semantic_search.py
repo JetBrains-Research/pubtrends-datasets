@@ -105,6 +105,8 @@ class SemanticSearcher:
 
 
     def rank_by_relevance(self, gses: List[GSE], query: str) -> List[GSE]:
+        if len(gses) == 0:
+            return []
         query_embedding = fetch_texts_embedding([query], self.embeddings_service_url)[0]
 
         embeddings_with_gse = self.embed_gses(gses)

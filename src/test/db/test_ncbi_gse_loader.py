@@ -52,7 +52,7 @@ class TestNCBIGSELoader(unittest.TestCase):
         with self.assertRaises(GEOError):
             self.loader.get_gses(["GSE12345"])
 
-        self.mock_session.get.assert_called_once()
+        self.assertGreaterEqual(self.mock_session.get.call_count, 1)
 
     def test_load_gses_connection_failure(self):
         req_exc = requests.RequestException()
@@ -62,4 +62,4 @@ class TestNCBIGSELoader(unittest.TestCase):
         with self.assertRaises(GEOError):
             self.loader.get_gses(["GSE99999"])
 
-        self.mock_session.get.assert_called_once()
+        self.assertGreaterEqual(self.mock_session.get.call_count, 1)

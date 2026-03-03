@@ -3,6 +3,7 @@ from typing import List
 
 import GEOparse
 import requests
+import tenacity
 from dacite import from_dict
 
 from src.db.geoparse_to_geometadb import format_geoparse_metadata
@@ -26,6 +27,7 @@ class NCBIGSELoader(GSELoader):
         self.repository.save_gses(gses)
         return gses
 
+    @tenacity.retry(wait=tenacity.wait_exponential(max=10), stop=tenacity.stop_after_attempt(3), reraise=True)
     def download_geo_dataset(self, accession: str) -> GSE:
         """
         Downloads the GEO dataset with the given accession.
