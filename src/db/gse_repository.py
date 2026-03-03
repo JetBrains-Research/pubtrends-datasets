@@ -5,7 +5,7 @@ import sqlite3
 from typing import List
 
 import sqlalchemy.exc
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -28,6 +28,10 @@ class GSERepository(GSELoader):
         self.async_engine = create_async_engine(f"sqlite+aiosqlite:///{geometadb_path}")
         self.geometadb_path = geometadb_path
         self.semaphore = asyncio.Semaphore(MAX_PARALLEL_REQUESTS)
+
+        @event.listens_for(self.engine, "connect")
+        def set_sqlite_text_factory(dbapi_connection, connection_record):
+            dbapi_connection.text_factory = lambda x: x.decode(errors="replace")
 
     def save_gses(self, gses: List[GSE]) -> None:
         """
@@ -86,9 +90,9 @@ class GSERepository(GSELoader):
                     .where(GSE.gse.in_(gse_accessions))
                 )
                 return list(session.scalars(statement).all())
-        except SQLAlchemyError:
+        except SQLAlchemyError as e:
             logger.exception("Failed to load GEO datasets from geometadb:")
-            return []
+            raise e
 
     async def get_gses_async(self, gse_accessions: List[str]) -> List[GSE]:
         """
