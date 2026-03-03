@@ -84,8 +84,11 @@ class SemanticSearcher:
 
     def chunk_gse(self, gse: GSE) -> List[str]:
         chunks = [gse.title]
-        if not gse.is_superseries():
+        if gse.is_superseries():
+            return chunks
+        if gse.summary:
             chunks.extend(get_chunks(gse.summary, self.max_tokens_per_chunk, self.overlap_sentences))
+        if gse.overall_design:
             chunks.extend(get_chunks(gse.overall_design, self.max_tokens_per_chunk, self.overlap_sentences))
         return chunks
 
