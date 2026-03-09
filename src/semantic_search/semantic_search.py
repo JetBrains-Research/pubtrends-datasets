@@ -7,6 +7,7 @@ import spacy
 from src.config.config import Config
 from src.db.gse import GSE
 from src.semantic_search.embeddings_service import fetch_texts_embedding
+from src.semantic_search.scored_gse import ScoredGSE
 
 logger = logging.getLogger(__name__)
 
@@ -22,9 +23,9 @@ def cosine_similarity(vector, matrix):
     return (matrix @ vector) / (safe_norms * vector_norm)
 
 
-def stable_deduplicate_gses(iterable: Iterable[GSE]):
+def stable_deduplicate(iterable: Iterable, key_fn):
     added = set()
-    return [x for x in iterable if not (x.gse in added or added.add(x.gse))]
+    return [x for x in iterable if not (key_fn(x) in added or added.add(key_fn(x)))]
 
 
 def get_chunks(text, max_tokens_per_chunk=128, overlap_sentences=1):
@@ -104,7 +105,7 @@ class SemanticSearcher:
         return result
 
 
-    def rank_by_relevance(self, gses: List[GSE], query: str) -> List[GSE]:
+    def rank_by_relevance(self, gses: List[GSE], query: str) -> List[ScoredGSE]:
         if len(gses) == 0:
             return []
         query_embedding = fetch_texts_embedding([query], self.embeddings_service_url)[0]
@@ -115,5 +116,4 @@ class SemanticSearcher:
         gses_with_scores = [(embeddings_with_gse[i][1], scores[i]) for i in range(len(embeddings_with_gse))]
 
         ranked_gses_with_scores = sorted(gses_with_scores, key=lambda x: x[1], reverse=True)
-        ranked_gses = [entry[0] for entry in ranked_gses_with_scores]
-        return stable_deduplicate_gses(ranked_gses)
+        return stable_deduplicate([ScoredGSE(*entry) for entry in ranked_gses_with_scores], lambda x: x.gse.gse)
