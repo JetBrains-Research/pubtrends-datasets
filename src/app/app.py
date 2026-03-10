@@ -70,6 +70,7 @@ def get_datasets():
         required: false
         description: (GET only) Comma-separated list of PubMed IDs (e.g., "30530648,31018141")
         example: "30530648,31018141"
+        default: "30530648,31018141"
       - name: body
         in: body
         required: false
@@ -81,6 +82,13 @@ def get_datasets():
               items:
                 type: string
               description: (POST only) Array of PubMed IDs
+              example:
+                - "30530648"
+                - "31018141"
+          example:
+            pubmed_ids:
+              - "30530648"
+              - "31018141"
     responses:
       200:
         description: Successful response with list of GSE datasets
@@ -147,11 +155,12 @@ def get_relevant_datasets():
     """
     POST endpoint to retrieve most relevant datasets for a query and PubMed IDs.
     ---
-    summary: Get relevant GSE datasets for PubMed IDs and query
+    summary: Get relevant GSE datasets with relevance scores
     description: |
       Retrieves Gene Expression Omnibus Series (GSE) datasets linked to the provided PubMed IDs,
       then ranks them by cosine similarity between the query embedding and dataset text
       (title, summary, overall design).
+      Endpoint path: /relevant_datasets
     parameters:
       - name: body
         in: body
@@ -163,31 +172,45 @@ def get_relevant_datasets():
               type: array
               items:
                 type: string
+              example:
+                - "30530648"
+                - "31018141"
             query:
               type: string
+              example: "mouse brain"
           required:
             - pubmed_ids
             - query
+          example:
+            pubmed_ids:
+              - "30530648"
+              - "31018141"
+            query: "mouse brain"
     responses:
       200:
-        description: Successful response with list of relevant GSE datasets
+        description: Successful response with list of scored GSE datasets
         schema:
           type: array
           items:
-            type: object
-            properties:
-              gse:
-                type: string
-              title:
-                type: string
-              summary:
-                type: string
-              overall_design:
-                type: string
-              pubmed_id:
-                type: integer
+            $ref: '#/definitions/ScoredGSE'
+        examples:
+          application/json:
+            - gse:
+                gse: "GSE137444"
+                title: "Stem cell derived human microglia transplanted in mouse brain to study human disease"
+                pubmed_id: 31659342
+                summary: "While genetics highlight the role of microglia in Alzheimer's disease..."
+              score: 0.8123
+            - gse:
+                gse: "GSE127884"
+                title: "The major risk factors for Alzheimer's disease..."
+                pubmed_id: 31018141
+                summary: "Microglia are involved in Alzheimer's disease (AD)..."
+              score: 0.7031
       400:
         description: Bad request - missing or invalid inputs
+      500:
+        description: Internal server error
     """
     logger.info(f'/relevant_datasets {log_request(request)}')
     payload = request.get_json(silent=True) or {}
