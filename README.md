@@ -22,11 +22,18 @@ This script will install the prerequisite packages using the [uv](https://github
 After the script finishes, please edit and copy the `config.properties` file to `~/.pubtrends-datasets/config.properties`.
 
 ### Running the sentence-transformers service
-The app uses PubTrends' sentence-transformers service for embedding text in its relevant datasets feature. To run the service:
-1. Build the sentence-transformers container using `scripts/build_sentence_transformers_container.sh`.
-2. Run the container using `scripts/run_sentence_transformers_container.sh`. If you have a CUDA-capable GPU, pass the `--gpu` flag to the script to enable GPU acceleration.
+The app uses this service to generate text embeddings for the Relevant Datasets feature.
+
+#### Prerequisites for GPU Acceleration:
+To use the --gpu flag, you must have a CUDA-capable GPU and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) installed.
+
+#### Deployment steps:
+1. Build the sentence-transformers container: 
+```scripts/build_sentence_transformers_container.sh```
+2. Run the container: 
+```scripts/run_sentence_transformers_container.sh```
  
-This will create a docker container named `pubtrends-embeddings` and start the service on port 5001.
+Once started, the `pubtrends-embeddings` container will be available on port 5001.
 
 ## Database migration
 
