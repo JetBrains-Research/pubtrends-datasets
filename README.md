@@ -24,7 +24,7 @@ After the script finishes, please edit and copy the `config.properties` file to 
 ### Running the sentence-transformers service
 The app uses PubTrends' sentence-transformers service for embedding text in its relevant datasets feature. To run the service:
 1. Build the sentence-transformers container using `scripts/build_sentence_transformers_container.sh`.
-2. Run the container using `scripts/run_sentence_transformers_container.sh`.
+2. Run the container using `scripts/run_sentence_transformers_container.sh`. If you have a CUDA-capable GPU, pass the `--gpu` flag to the script to enable GPU acceleration.
  
 This will create a docker container named `pubtrends-embeddings` and start the service on port 5001.
 

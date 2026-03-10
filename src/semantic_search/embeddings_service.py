@@ -12,7 +12,7 @@ def fetch_texts_embedding_batch(texts, embeddings_service_url):
     try:
         r = requests.request(
             url=f'{embeddings_service_url}/embeddings_texts',
-            method='GET',
+            method='POST',
             json=texts,
             headers={'Accept': 'application/json'}
         )
