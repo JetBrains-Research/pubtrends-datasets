@@ -35,14 +35,6 @@ To use the --gpu flag, you must have a CUDA-capable GPU and the [NVIDIA Containe
  
 Once started, the `pubtrends-embeddings` container will be available on port 5001.
 
-## Database migration
-
-Database migrations are managed using `flask-migrate`. To migrate the database to the newest version, run:
-```aiignore
-uv run flask --app src.app.app db upgrade
-```
-The migrations need to be applied manually whenever the database schema changes.
-
 ## GEO dataset downloading and processing
 
 Use the geometadb backfilling tool to synchronize the database with currently available GEO datasets:
