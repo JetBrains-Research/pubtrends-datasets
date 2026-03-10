@@ -3,11 +3,14 @@ from typing import List, Dict
 from unittest.mock import patch
 
 import numpy as np
+from math import sqrt
 from parameterized import parameterized
 
 from src.config.config import Config
 from src.db.gse import GSE
-from src.semantic_search.semantic_search import SemanticSearcher, stable_deduplicate_gses, get_chunks
+from src.semantic_search.scored_gse import ScoredGSE
+from src.semantic_search.semantic_search import SemanticSearcher, get_chunks, \
+    stable_deduplicate
 
 GSEs_TO_SEARCH = [
     GSE(
@@ -68,11 +71,14 @@ GSEs_TO_SEARCH = [
         supplementary_file="ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE137nnn/GSE137444/suppl/GSE137444_chimera_human_h9.tsv.gz;  ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE137nnn/GSE137444/suppl/GSE137444_chimera_mouse.tsv.gz; ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE137nnn/GSE137444/suppl/GSE137444_human_patient.tsv.gz; ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE137nnn/GSE137444/suppl/GSE137444_invitro_mh_mc.tsv.gz"
     ),
 ]
+
+
 class TestSemanticSearch(unittest.TestCase):
     def setUp(self):
         self.config = Config(test=True)
         self.semantic_search = SemanticSearcher(self.config)
-        self.fetch_texts_embedding = self.enterContext(patch("src.semantic_search.semantic_search.fetch_texts_embedding"))
+        self.fetch_texts_embedding = self.enterContext(
+            patch("src.semantic_search.semantic_search.fetch_texts_embedding"))
 
     @staticmethod
     def _mock_fetch_texts_embedding(texts: List[str], embeddings_if_substring_present: Dict[str, List[float]]):
@@ -80,6 +86,7 @@ class TestSemanticSearch(unittest.TestCase):
         for text in texts:
             for substring, embedding in embeddings_if_substring_present.items():
                 if substring in text.lower():
+                    print("found substring ", substring, " in text ", text.lower()[:100])
                     embeddings.append(embedding)
                     break
             else:
@@ -90,14 +97,14 @@ class TestSemanticSearch(unittest.TestCase):
         # Test case 1: Two duplicate GSEs return the first one
         (
                 [GSE(gse="GSE12345", title="Title", last_update_date="2023-01-01"),
-                 GSE(gse="GSE12345", title="Title", last_update_date="2023-01-01")],
+                 GSE(gse="GSE12345", title="Title", last_update_date="2023-01-02")],
                 [GSE(gse="GSE12345", title="Title", last_update_date="2023-01-01")]
         ),
         # Test case 2: GSE 1, GSE 2, GSE 1. Returns list GSE 1 GSE 2
         (
                 [GSE(gse="GSE1", title="Title1", last_update_date="2023-01-01"),
                  GSE(gse="GSE2", title="Title2", last_update_date="2023-01-02"),
-                 GSE(gse="GSE1", title="Title1", last_update_date="2023-01-01")],
+                 GSE(gse="GSE1", title="Title1", last_update_date="2023-01-03")],
                 [GSE(gse="GSE1", title="Title1", last_update_date="2023-01-01"),
                  GSE(gse="GSE2", title="Title2", last_update_date="2023-01-02")]
         ),
@@ -105,7 +112,7 @@ class TestSemanticSearch(unittest.TestCase):
         (
                 [GSE(gse="GSE2", title="Title2", last_update_date="2023-01-02"),
                  GSE(gse="GSE1", title="Title1", last_update_date="2023-01-01"),
-                 GSE(gse="GSE2", title="Title2", last_update_date="2023-01-02"),
+                 GSE(gse="GSE2", title="Title2", last_update_date="2023-01-04"),
                  GSE(gse="GSE1", title="Title1", last_update_date="2023-01-01")],
                 [GSE(gse="GSE2", title="Title2", last_update_date="2023-01-02"),
                  GSE(gse="GSE1", title="Title1", last_update_date="2023-01-01")]
@@ -121,7 +128,7 @@ class TestSemanticSearch(unittest.TestCase):
         ),
     ])
     def test_stable_deduplicate_gses(self, gses: List[GSE], expected_result: List[GSE]):
-        result = stable_deduplicate_gses(gses)
+        result = stable_deduplicate(gses, lambda gse: gse.gse)
         self.assertListEqual(result, expected_result)
 
     @parameterized.expand([
@@ -139,14 +146,21 @@ class TestSemanticSearch(unittest.TestCase):
         self.assertListEqual(result, expected_result)
 
     @parameterized.expand([
-        ("mouse brain", {"mouse brain": [1, 1], "alzheimer's": [1, 2]}, [GSEs_TO_SEARCH[2], GSEs_TO_SEARCH[1], GSEs_TO_SEARCH[0]])
+        ("mouse brain", {"mouse brain": [1, 1], "alzheimer's": [1, 2]},
+         [ScoredGSE(GSEs_TO_SEARCH[2], 1.0), ScoredGSE(GSEs_TO_SEARCH[1], 3 / sqrt(2) / sqrt(5)),
+          ScoredGSE(GSEs_TO_SEARCH[0], 0.0)])
     ])
-    def test_rank_by_relevance(self, query: str, embeddings_if_word_present: Dict[str, List[float]], expected_result: List[GSE]):
-        self.fetch_texts_embedding.side_effect = lambda texts, url: TestSemanticSearch._mock_fetch_texts_embedding(texts, embeddings_if_word_present)
+    def test_rank_by_relevance(self, query: str, embeddings_if_word_present: Dict[str, List[float]],
+                               expected_result: List[GSE]):
+        self.fetch_texts_embedding.side_effect = lambda texts, url: TestSemanticSearch._mock_fetch_texts_embedding(
+            texts, embeddings_if_word_present)
         result = self.semantic_search.rank_by_relevance(GSEs_TO_SEARCH, query)
         # Once for the query and another time for GSEs
         self.assertGreaterEqual(self.fetch_texts_embedding.call_count, 2)
-        self.assertListEqual(result, expected_result)
+        for i, scored_gse in enumerate(result):
+            self.assertEqual(scored_gse.gse, expected_result[i].gse)
+            print(scored_gse.gse.title)
+            self.assertAlmostEqual(scored_gse.score, expected_result[i].score)
 
     def test_rank_by_relevance_empty_input(self):
         result = self.semantic_search.rank_by_relevance([], "query")

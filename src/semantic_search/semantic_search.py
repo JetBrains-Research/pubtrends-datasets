@@ -77,6 +77,7 @@ def get_chunks(text, max_tokens_per_chunk=128, overlap_sentences=1):
         chunks.append(chunk_text)
     return chunks
 
+
 class SemanticSearcher:
     def __init__(self, config: Config):
         self.max_tokens_per_chunk = config.max_tokens_per_chunk
@@ -93,7 +94,6 @@ class SemanticSearcher:
             chunks.extend(get_chunks(gse.overall_design, self.max_tokens_per_chunk, self.overlap_sentences))
         return chunks
 
-
     def embed_gses(self, gses: List[GSE]) -> list[tuple[np.ndarray, GSE]]:
         chunks_with_gse = [(chunk, gse) for gse in gses for chunk in self.chunk_gse(gse)]
 
@@ -104,7 +104,6 @@ class SemanticSearcher:
 
         return result
 
-
     def rank_by_relevance(self, gses: List[GSE], query: str) -> List[ScoredGSE]:
         if len(gses) == 0:
             return []
@@ -113,7 +112,7 @@ class SemanticSearcher:
         embeddings_with_gse = self.embed_gses(gses)
         embeddings = np.array([embedding for embedding, _ in embeddings_with_gse])
         scores = cosine_similarity(query_embedding, embeddings)
-        gses_with_scores = [(embeddings_with_gse[i][1], scores[i]) for i in range(len(embeddings_with_gse))]
+        scored_gses = [ScoredGSE(embeddings_with_gse[i][1], scores[i]) for i in range(len(embeddings_with_gse))]
 
-        ranked_gses_with_scores = sorted(gses_with_scores, key=lambda x: x[1], reverse=True)
-        return stable_deduplicate([ScoredGSE(*entry) for entry in ranked_gses_with_scores], lambda x: x.gse.gse)
+        ranked_scored_gses = list(sorted(scored_gses, key=lambda x: x.score, reverse=True))
+        return stable_deduplicate(ranked_scored_gses, lambda x: x.gse.gse)
