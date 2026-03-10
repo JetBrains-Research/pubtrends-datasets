@@ -14,7 +14,8 @@ def fetch_texts_embedding_batch(texts, embeddings_service_url):
             url=f'{embeddings_service_url}/embeddings_texts',
             method='POST',
             json=texts,
-            headers={'Accept': 'application/json'}
+            headers={'Accept': 'application/json'},
+            timeout=10,
         )
         r.raise_for_status()
         embeddings = np.array(r.json())
