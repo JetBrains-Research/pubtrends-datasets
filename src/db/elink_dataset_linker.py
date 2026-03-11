@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 import re
 import requests
 from src.db.paper_dataset_linker import PaperDatasetLinker
@@ -17,6 +17,32 @@ class ELinkDatasetLinker(PaperDatasetLinker):
             raise ValueError("At least one valid PubMed ID is required")
         geo_ids = self._fetch_geo_ids(pubmed_ids)
         return self._fetch_geo_accessions(geo_ids)
+
+    def link_to_datasets_mapped(self, pubmed_ids: List[str]) -> Dict[str, List[str]]:
+        """
+        Returns a mapping of PubMed IDs to their associated GEO accessions.
+
+        Since the ELink API doesn't support per-PubMed-ID mapping in batch mode,
+        this implementation makes one API call per PubMed ID to maintain accuracy.
+
+        :param pubmed_ids: List of PubMed IDs for which to get associated GEO accessions.
+        :return: Dictionary mapping each PubMed ID to its list of GEO accessions.
+        """
+        if not pubmed_ids:
+            raise ValueError("At least one valid PubMed ID is required")
+
+        result: Dict[str, List[str]] = {}
+
+        for pubmed_id in pubmed_ids:
+            try:
+                # Call link_to_datasets for each individual PubMed ID
+                accessions = self.link_to_datasets([pubmed_id])
+                result[pubmed_id] = accessions
+            except Exception:
+                # If a single ID fails, store empty list and continue
+                result[pubmed_id] = []
+
+        return result
 
     def _fetch_geo_ids(self, pubmed_ids: List[str]) -> List[str]:
         """
