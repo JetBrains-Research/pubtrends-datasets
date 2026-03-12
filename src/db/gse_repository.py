@@ -9,9 +9,10 @@ from sqlalchemy import create_engine, event
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from src.db.gse import GSE
+from src.db.gse_gsm import GSE_GSM
 from src.db.gse_loader import GSELoader
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ class GSERepository(GSELoader):
             raise RuntimeError(f"Geometadb file {geometadb_path} does not exist")
         if not os.access(geometadb_path, os.W_OK):
             raise RuntimeError(f"Geometadb file {geometadb_path} is not writable")
-        self.engine = create_engine(f"sqlite:///{geometadb_path}")
+        self.engine = create_engine(f"sqlite:///{geometadb_path}", echo=True)
         self.async_engine = create_async_engine(f"sqlite+aiosqlite:///{geometadb_path}")
         self.geometadb_path = geometadb_path
         self.semaphore = asyncio.Semaphore(MAX_PARALLEL_REQUESTS)
@@ -88,6 +89,9 @@ class GSERepository(GSELoader):
                 statement = (
                     select(GSE)
                     .where(GSE.gse.in_(gse_accessions))
+                    .options(
+                        selectinload(GSE.gse_gsm_links)
+                    )
                 )
                 return list(session.scalars(statement).all())
         except SQLAlchemyError as e:

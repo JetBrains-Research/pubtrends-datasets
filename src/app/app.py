@@ -16,6 +16,7 @@ from src.db.chained_dataset_linker import ChainedDatasetLinker
 from src.db.chained_gse_loader import ChainedGSELoader
 from src.db.elink_dataset_linker import ELinkDatasetLinker
 from src.db.europepmc_dataset_linker import EuropePMCDatasetLinker
+from src.db.gse import GSE_DTO
 from src.db.gse_repository import GSERepository
 from src.db.mapper_registry import mapper_registry
 from src.db.ncbi_gse_loader import NCBIGSELoader
@@ -250,7 +251,7 @@ def get_gse_details():
     try:
         with requests.Session() as http_session:
             gse_objects = _get_gse_details(gse_accessions, http_session)
-            result = [asdict(gse) for gse in gse_objects]
+            result = [asdict(GSE_DTO(gse)) for gse in gse_objects]
             return jsonify(result)
 
     except Exception as e:
