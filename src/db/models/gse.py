@@ -6,8 +6,8 @@ from typing import Optional, List
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship
 
-from src.db.gse_gsm import GSE_GSM
-from src.db.mapper_registry import mapper_registry
+from src.db.models.gse_gsm import GSE_GSM
+from src.db.models.mapper_registry import mapper_registry
 
 from sqlalchemy import Index, Integer, PrimaryKeyConstraint, REAL, Text, Column
 

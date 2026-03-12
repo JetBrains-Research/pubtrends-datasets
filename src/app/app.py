@@ -12,14 +12,14 @@ from flask_sqlalchemy import SQLAlchemy
 from src.app.swagger_template import swagger_template
 from src.config.config import Config
 from src.config.configure_log_file import configure_log_file
-from src.db.chained_dataset_linker import ChainedDatasetLinker
-from src.db.chained_gse_loader import ChainedGSELoader
-from src.db.elink_dataset_linker import ELinkDatasetLinker
-from src.db.europepmc_dataset_linker import EuropePMCDatasetLinker
-from src.db.gse import GSE_DTO
-from src.db.gse_repository import GSERepository
-from src.db.mapper_registry import mapper_registry
-from src.db.ncbi_gse_loader import NCBIGSELoader
+from src.db.linkers.chained_dataset_linker import ChainedDatasetLinker
+from src.db.loaders.chained_gse_loader import ChainedGSELoader
+from src.db.linkers.elink_dataset_linker import ELinkDatasetLinker
+from src.db.linkers.europepmc_dataset_linker import EuropePMCDatasetLinker
+from src.db.models.gse import GSE_DTO
+from src.db.repositories.gse_repository import GSERepository
+from src.db.models.mapper_registry import mapper_registry
+from src.db.loaders.ncbi_gse_loader import NCBIGSELoader
 
 app = Flask(__name__)
 swagger = Swagger(app, template=swagger_template)

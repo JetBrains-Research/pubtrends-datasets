@@ -1,7 +1,7 @@
 import logging
 from typing import List, Dict
 
-from src.db.paper_dataset_linker import PaperDatasetLinker
+from src.db.linkers.paper_dataset_linker import PaperDatasetLinker
 
 logger = logging.getLogger(__name__)
 

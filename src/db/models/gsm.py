@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-from src.db.mapper_registry import mapper_registry
+from src.db.models.mapper_registry import mapper_registry
 from sqlalchemy import Column, Index, PrimaryKeyConstraint, REAL, Text, Table
 
 @mapper_registry.mapped

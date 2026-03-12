@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 from sqlalchemy import Index, PrimaryKeyConstraint, Text, Column, ForeignKey
 
-from src.db.mapper_registry import mapper_registry
+from src.db.models.mapper_registry import mapper_registry
 
 
 @mapper_registry.mapped

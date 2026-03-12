@@ -1,7 +1,7 @@
 from typing import List, Dict
 import requests
 from src.exception.europepmc_error import EuropePMCError
-from src.db.paper_dataset_linker import PaperDatasetLinker
+from src.db.linkers.paper_dataset_linker import PaperDatasetLinker
 
 
 class EuropePMCDatasetLinker(PaperDatasetLinker):

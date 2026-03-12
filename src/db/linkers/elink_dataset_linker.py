@@ -1,7 +1,7 @@
 from typing import List, Dict
 import re
 import requests
-from src.db.paper_dataset_linker import PaperDatasetLinker
+from src.db.linkers.paper_dataset_linker import PaperDatasetLinker
 from src.exception.entrez_error import EntrezError
 
 

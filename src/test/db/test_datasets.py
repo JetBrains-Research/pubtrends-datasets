@@ -1,7 +1,7 @@
 """Test datasets for GEOmetadb."""
 
-from src.db.gse import GSE
-from src.db.gsm import GSM
+from src.db.models.gse import GSE
+from src.db.models.gsm import GSM
 
 TEST_GSEs = [
     GSE(

@@ -9,11 +9,10 @@ from sqlalchemy import create_engine, event
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import Session, joinedload, selectinload
+from sqlalchemy.orm import Session, selectinload
 
-from src.db.gse import GSE
-from src.db.gse_gsm import GSE_GSM
-from src.db.gse_loader import GSELoader
+from src.db.models.gse import GSE
+from src.db.loaders.gse_loader import GSELoader
 
 logger = logging.getLogger(__name__)
 MAX_PARALLEL_REQUESTS = 10
