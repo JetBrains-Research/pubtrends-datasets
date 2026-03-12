@@ -5,7 +5,7 @@ import GEOparse
 import requests
 from dacite import from_dict
 
-from src.db.loaders.geoparse_to_geometadb import format_geoparse_metadata
+from src.db.loaders.geoparse_to_geometadb import format_geoparse_gse_metadata
 from src.db.models.gse import GSE
 from src.db.loaders.gse_loader import GSELoader
 from src.db.repositories.gse_repository import GSERepository
@@ -39,7 +39,7 @@ class NCBIGSELoader(GSELoader):
             response = self.session.get(dataset_metadata_url, stream=True)
             response.raise_for_status()
             metadata = GEOparse.GEOparse.parse_metadata(response.iter_lines(decode_unicode=True))
-            return from_dict(GSE, format_geoparse_metadata(metadata))
+            return from_dict(GSE, format_geoparse_gse_metadata(metadata))
         except requests.HTTPError as e:
             raise GEOError(f"Error downloading GEO dataset {accession}: {e.response.status_code}")
         except requests.RequestException:

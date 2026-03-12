@@ -24,7 +24,7 @@ class GSERepository(GSELoader):
             raise RuntimeError(f"Geometadb file {geometadb_path} does not exist")
         if not os.access(geometadb_path, os.W_OK):
             raise RuntimeError(f"Geometadb file {geometadb_path} is not writable")
-        self.engine = create_engine(f"sqlite:///{geometadb_path}", echo=True)
+        self.engine = create_engine(f"sqlite:///{geometadb_path}")
         self.async_engine = create_async_engine(f"sqlite+aiosqlite:///{geometadb_path}")
         self.geometadb_path = geometadb_path
         self.semaphore = asyncio.Semaphore(MAX_PARALLEL_REQUESTS)
