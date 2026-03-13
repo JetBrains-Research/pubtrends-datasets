@@ -4,15 +4,15 @@ import os
 import sqlite3
 from typing import List
 
-import sqlalchemy.exc
-from sqlalchemy import create_engine, event
+from sqlalchemy import event
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, selectinload
 
-from src.db.models.gse import GSE
 from src.db.loaders.gse_loader import GSELoader
+from src.db.models.gse import GSE
+from src.db.repositories.sqlalchemy_engine_helpers import create_sync_engine
 
 logger = logging.getLogger(__name__)
 MAX_PARALLEL_REQUESTS = 10
@@ -24,8 +24,8 @@ class GSERepository(GSELoader):
             raise RuntimeError(f"Geometadb file {geometadb_path} does not exist")
         if not os.access(geometadb_path, os.W_OK):
             raise RuntimeError(f"Geometadb file {geometadb_path} is not writable")
-        self.engine = create_engine(f"sqlite:///{geometadb_path}")
-        self.async_engine = create_async_engine(f"sqlite+aiosqlite:///{geometadb_path}")
+        self.engine = create_sync_engine(geometadb_path)
+        self.async_engine = create_sync_engine(geometadb_path)
         self.geometadb_path = geometadb_path
         self.semaphore = asyncio.Semaphore(MAX_PARALLEL_REQUESTS)
 
@@ -49,20 +49,6 @@ class GSERepository(GSELoader):
         except SQLAlchemyError:
             logger.exception("Failed to save GEO datasets to geometadb:")
             raise
-
-    async def save_gses_async(self, gses: List[GSE]) -> None:
-        if not gses:
-            return
-
-        try:
-            async with AsyncSession(self.async_engine) as session:
-                for gse in gses:
-                    await session.merge(gse)
-                await session.commit()
-        except sqlalchemy.exc.SQLAlchemyError as e:
-            # Just log the exception so as not to fail the whole pipeline.
-            logger.exception("Failed to save GEO datasets to geometadb:")
-            raise e
 
     @staticmethod
     async def executemany_with_retry(cursor, query, args):

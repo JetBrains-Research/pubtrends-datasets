@@ -4,7 +4,7 @@ import gzip
 import logging
 import os.path
 from concurrent.futures import ProcessPoolExecutor
-from typing import List
+from typing import List, Tuple
 
 import GEOparse
 import aiofiles
@@ -15,7 +15,9 @@ from tenacity import retry, stop_after_attempt
 from tqdm.asyncio import tqdm_asyncio as tqdm
 
 from src.config.config import Config
-from src.db.loaders.geoparse_to_geometadb import format_geoparse_gse_metadata
+from src.db.loaders.geoparse_to_geometadb import format_geoparse_gse_metadata, format_geoparse_gsm_metadata
+from src.db.models import GSM
+from src.db.repositories.gsm_repository import GSMRepository
 from src.db.utils.get_geo_accessions_for_dates import get_gse_ids_by_last_update_date
 from src.db.models.gse import GSE
 from src.db.repositories.gse_repository import GSERepository
@@ -42,11 +44,12 @@ async def tqdm_gather(*fs, return_exceptions=False, **kwargs):
 
 
 class GEOmetadbBackfiller:
-    def __init__(self, config: Config, gse_repository: GSERepository):
+    def __init__(self, config: Config, gse_repository: GSERepository, gsm_repository: GSMRepository):
         self.dataset_parser_workers = config.dataset_parser_workers
         self.max_connections = config.max_ncbi_connections
         self.download_folder = config.dataset_download_folder
         self.gse_repository = gse_repository
+        self.gsm_repository = gsm_repository
         self.semaphore = asyncio.Semaphore(self.max_connections)
         self.show_progress = config.show_backfill_progress
 
@@ -76,7 +79,7 @@ class GEOmetadbBackfiller:
         :param skip_existing: If the dataset already exists in the database, return it instead of downloading it again.
         :return: GSE object representing the dataset.
         """
-        existing_dataset = await self.gse_repository.get_gses_async([gse_accession])
+        existing_dataset = await asyncio.to_thread(self.gse_repository.get_gses,[gse_accession])
         if existing_dataset and skip_existing:
             return existing_dataset[0]
 
@@ -85,8 +88,11 @@ class GEOmetadbBackfiller:
         await self.download_gse_file(download_path, session, url)
 
         loop = asyncio.get_running_loop()
-        gse = await loop.run_in_executor(executor, GEOmetadbBackfiller.parse_dataset, download_path)
-        await self.gse_repository.save_gses_async([gse])
+        gse, gsms = await loop.run_in_executor(executor, GEOmetadbBackfiller.parse_dataset, download_path)
+
+        await asyncio.to_thread(self.gse_repository.save_gses, [gse])
+        await asyncio.to_thread(self.gsm_repository.save_gsms, gsms)
+
         logger.info(f"Saved dataset {gse_accession}")
         return gse
 
@@ -121,17 +127,20 @@ class GEOmetadbBackfiller:
                 raise e
 
     @staticmethod
-    def parse_dataset(gzip_path: str) -> GSE:
+    def parse_dataset(gzip_path: str) -> Tuple[GSE, List[GSM]]:
         """
-        Parses a GEO dataset archive and returns a GSE object.
+        Parses a GEO dataset archive and returns a GSE object and a list of GSM objects from the dataset.
 
         :param gzip_path: Path to the gzip archive of the dataset.
-        :return: GEOparse GSE object.
+        :return: GSE object representing the dataset and a list of GSM objects representing the samples in the dataset.
         """
         try:
             geo = GEOparse.get_GEO(filepath=gzip_path, silent=True)
             gse = from_dict(GSE, format_geoparse_gse_metadata(geo.metadata))
-            return gse
+            gsms = [from_dict(GSM, format_geoparse_gsm_metadata(gsm.metadata)) for gsm in geo.gsms.values()]
+            if not geo.gsms:
+                logger.warning(f"No samples found in dataset {gse.gse}")
+            return gse, gsms
         except gzip.BadGzipFile as e:
             logger.exception(f"Error parsing GEO dataset archive - Invalid gzip file {gzip_path}")
             raise e
@@ -227,10 +236,11 @@ if __name__ == '__main__':
     parser.add_argument('--ignore-failures', action='store_true',
                         help='If True, datasets that fail to download will be ignored.')
     args = parser.parse_args()
+    logger.setLevel(logging.WARNING)
 
     config = Config(test=False)
     gse_repository = GSERepository(config.geometadb_path)
-    geometadb_update_job_repository = GEOmetadbUpdateJobRepository(config.geometadb_path)
-    backfiller = GEOmetadbBackfiller(config, gse_repository, geometadb_update_job_repository)
+    gsm_repository = GSMRepository(config.geometadb_path)
+    backfiller = GEOmetadbBackfiller(config, gse_repository, gsm_repository)
     backfiller.backfill_geometadb(args.start_date, args.end_date, args.skip_existing, args.ignore_failures)
     print("Done")
