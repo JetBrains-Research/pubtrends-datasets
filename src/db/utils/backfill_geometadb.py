@@ -52,6 +52,7 @@ class GEOmetadbBackfiller:
         self.gsm_repository = gsm_repository
         self.semaphore = asyncio.Semaphore(self.max_connections)
         self.show_progress = config.show_backfill_progress
+        self.repository_lock = asyncio.Lock()
 
     @staticmethod
     def get_download_url(gse_accession: str) -> str:
@@ -90,8 +91,9 @@ class GEOmetadbBackfiller:
         loop = asyncio.get_running_loop()
         gse, gsms = await loop.run_in_executor(executor, GEOmetadbBackfiller.parse_dataset, download_path)
 
-        await asyncio.to_thread(self.gse_repository.save_gses, [gse])
-        await asyncio.to_thread(self.gsm_repository.save_gsms, gsms)
+        async with self.repository_lock:
+            await asyncio.to_thread(self.gse_repository.save_gses, [gse])
+            await asyncio.to_thread(self.gsm_repository.save_gsms, gsms)
 
         logger.info(f"Saved dataset {gse_accession}")
         return gse
