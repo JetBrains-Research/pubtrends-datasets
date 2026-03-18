@@ -25,6 +25,7 @@ class GSEArchiveDownloader:
         self.max_connections = config.max_ncbi_connections
         self.semaphore = asyncio.Semaphore(self.max_connections)
         self.session = session
+        self.dont_redownload = config.dont_redownload
 
     @retry(stop=stop_after_attempt(RETRY_ATTEMPTS), reraise=True)
     async def download_gzip(self, download_path: str, url: str) -> None:
@@ -34,26 +35,25 @@ class GSEArchiveDownloader:
         :param download_path: Path where the file will be saved.
         :param url: URL to download from.
         """
-        async with self.semaphore:
-            try:
-                logger.info("Downloading: %s", url)
-                async with (
-                    self.session.get(url) as response,
-                    aiofiles.open(download_path, mode="wb") as dataset_archive,
-                ):
-                    async for chunk in response.content.iter_chunked(1024 * 1024):
-                        await dataset_archive.write(chunk)
-                if not await is_gzip_valid(download_path):
-                    raise gzip.BadGzipFile("Downloaded file is not a valid gzip file")
-                logger.info("Finished downloading: %s", url)
-            except (aiohttp.ClientResponseError, aiohttp.ClientConnectionError, asyncio.TimeoutError) as exc:
-                logger.exception("Network error downloading %s", url)
-                await async_remove_if_exists(download_path)
-                raise exc
-            except Exception as exc:
-                logger.exception("Unexpected error saving %s to %s", url, download_path)
-                await async_remove_if_exists(download_path)
-                raise exc
+        try:
+            logger.info("Downloading: %s", url)
+            async with (
+                self.session.get(url) as response,
+                aiofiles.open(download_path, mode="wb") as dataset_archive,
+            ):
+                async for chunk in response.content.iter_chunked(1024 * 1024):
+                    await dataset_archive.write(chunk)
+            if not await is_gzip_valid(download_path):
+                raise gzip.BadGzipFile("Downloaded file is not a valid gzip file")
+            logger.info("Finished downloading: %s", url)
+        except (aiohttp.ClientResponseError, aiohttp.ClientConnectionError, asyncio.TimeoutError) as exc:
+            logger.exception("Network error downloading %s", url)
+            await async_remove_if_exists(download_path)
+            raise exc
+        except Exception as exc:
+            logger.exception("Unexpected error saving %s to %s", url, download_path)
+            await async_remove_if_exists(download_path)
+            raise exc
 
     async def download_gse_archive(self, gse_accession: str) -> DownloadedArchive:
         """
@@ -64,7 +64,10 @@ class GSEArchiveDownloader:
         """
         download_path = os.path.join(self.download_folder, f"{gse_accession}.soft.gz")
         url = GSEArchiveDownloader.get_download_url(gse_accession)
-        await self.download_gzip(download_path, url)
+        if os.path.exists(download_path) and self.dont_redownload:
+            return DownloadedArchive(accession=gse_accession, archive_path=download_path)
+        async with self.semaphore:
+            await self.download_gzip(download_path, url)
         return DownloadedArchive(accession=gse_accession, archive_path=download_path)
 
     @staticmethod
@@ -77,6 +80,13 @@ class GSEArchiveDownloader:
         """
         return (
             f"https://{GEO_FTP_HOST}/"
-            f"geo/series/{gse_accession[:-3]}nnn/{gse_accession}/soft/"
+            f"/geo/series/{gse_accession[:-3]}nnn/{gse_accession}/soft/"
+            f"{gse_accession}_family.soft.gz"
+        )
+
+    @staticmethod
+    def get_ftp_path(gse_accession: str) -> str:
+        return (
+            f"/geo/series/{gse_accession[:-3]}nnn/{gse_accession}/soft/"
             f"{gse_accession}_family.soft.gz"
         )
