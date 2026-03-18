@@ -8,7 +8,7 @@ import pandas.errors
 from parameterized import parameterized
 
 from src.config.config import Config
-from src.db.backfill_geometadb import GEOmetadbBackfiller, RETRY_ATTEMPTS
+from src.db.utils.backfill_geometadb import GEOmetadbBackfiller, RETRY_ATTEMPTS
 from src.test.helpers.async_iterator import AsyncIterator
 
 
@@ -20,7 +20,7 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         self.gse_repository.get_gses_async = AsyncMock(return_value=[])
 
         self.gse_accessions = ["GSE000000"]
-        self.mock_get_accessions = self.enterContext(patch("src.db.backfill_geometadb.get_gse_ids_by_last_update_date"))
+        self.mock_get_accessions = self.enterContext(patch("src.db.utils.backfill_geometadb.get_gse_ids_by_last_update_date"))
         self.mock_get_accessions.return_value = self.gse_accessions
         self.mock_aiohttp_get = self.enterContext(patch("aiohttp.ClientSession.get"))
         self.mock_get_running_loop = self.enterContext(patch("asyncio.get_running_loop"))

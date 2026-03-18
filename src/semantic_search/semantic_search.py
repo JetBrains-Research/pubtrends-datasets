@@ -5,7 +5,7 @@ import numpy as np
 import spacy
 
 from src.config.config import Config
-from src.db.gse import GSE
+from src.db.models.gse import GSE, GSE_DTO
 from src.semantic_search.embeddings_service import fetch_texts_embedding
 from src.semantic_search.scored_gse import ScoredGSE
 
@@ -112,7 +112,7 @@ class SemanticSearcher:
         embeddings_with_gse = self.embed_gses(gses)
         embeddings = np.array([embedding for embedding, _ in embeddings_with_gse])
         scores = cosine_similarity(query_embedding, embeddings)
-        scored_gses = [ScoredGSE(embeddings_with_gse[i][1], scores[i]) for i in range(len(embeddings_with_gse))]
+        scored_gses = [ScoredGSE(GSE_DTO(embeddings_with_gse[i][1]), scores[i]) for i in range(len(embeddings_with_gse))]
 
         ranked_scored_gses = list(sorted(scored_gses, key=lambda x: x.score, reverse=True))
         return stable_deduplicate(ranked_scored_gses, lambda x: x.gse.gse)

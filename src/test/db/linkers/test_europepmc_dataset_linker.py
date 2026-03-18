@@ -4,7 +4,7 @@ from unittest.mock import Mock
 import requests
 from parameterized import parameterized
 
-from src.db.europepmc_dataset_linker import EuropePMCDatasetLinker
+from src.db.linkers.europepmc_dataset_linker import EuropePMCDatasetLinker
 from src.exception.europepmc_error import EuropePMCError
 from src.test.helpers.http import create_mock_response
 

@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from typing import Iterable, List
-from src.db.gse import GSE
+from src.db.models.gse import GSE
 
 
 class GSELoader(metaclass=ABCMeta):

@@ -7,18 +7,18 @@ logger = logging.getLogger(__name__)
 
 
 def get_geometadb_dict(geoparse_gse: GSE) -> Dict:
-    return format_geoparse_metadata(geoparse_gse.metadata)
+    return format_geoparse_gse_metadata(geoparse_gse.metadata)
 
 
-def format_geoparse_metadata(geoparse_metadata: Dict) -> Dict:
+def format_geoparse_gse_metadata(gse_metadata: Dict) -> Dict:
     """
     Formats the metadata dictionary from GEOparse into a format suitable for
     creating a GSE object.
 
-    :param geoparse_metadata: Metadata dictionary from GEOparse.
+    :param gse_metadata: Metadata dictionary from GEOparse.
     """
     metadata_dict = {key: item[0] if isinstance(item, list) and len(item) > 0 else "" for key, item in
-                     geoparse_metadata.items()}
+                     gse_metadata.items()}
     metadata_dict["gse"] = metadata_dict.get("geo_accession", "")
     if "pubmed_id" in metadata_dict:
         try:
@@ -27,8 +27,26 @@ def format_geoparse_metadata(geoparse_metadata: Dict) -> Dict:
             logger.warning(f"Invalid PubMed ID: {metadata_dict['pubmed_id']}")
             metadata_dict["pubmed_id"] = None
     format_contact_info(metadata_dict)
-    if "contributor" in geoparse_metadata:
-        metadata_dict["contributor"] = GEOMETADB_SEPARATOR.join(geoparse_metadata["contributor"])
+    if "contributor" in gse_metadata:
+        metadata_dict["contributor"] = GEOMETADB_SEPARATOR.join(gse_metadata["contributor"])
+    return metadata_dict
+
+
+def format_geoparse_gsm_metadata(gsm_metadata: Dict) -> Dict:
+    """
+    Formats the metadata dictionary from GEOparse into a format suitable for
+    creating a GSE object.
+
+    :param gsm_metadata: Metadata dictionary from GEOparse.
+    """
+    metadata_dict = {key: item[0] if isinstance(item, list) and len(item) > 0 else "" for key, item in
+                     gsm_metadata.items()}
+    metadata_dict["gsm"] = metadata_dict.get("geo_accession", "")
+    metadata_dict["channel_count"] = float(metadata_dict.get("channel_count", 0))
+    metadata_dict["data_row_count"] = float(metadata_dict.get("data_row_count", 0))
+    format_contact_info(metadata_dict)
+    if "contributor" in gsm_metadata:
+        metadata_dict["contributor"] = GEOMETADB_SEPARATOR.join(gsm_metadata["contributor"])
     return metadata_dict
 
 

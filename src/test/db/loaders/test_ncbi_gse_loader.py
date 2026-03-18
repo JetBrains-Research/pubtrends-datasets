@@ -6,8 +6,8 @@ import requests
 from parameterized import parameterized
 
 from src.config.config import Config
-from src.db.gse import GSE
-from src.db.ncbi_gse_loader import NCBIGSELoader
+from src.db.loaders.ncbi_gse_loader import NCBIGSELoader
+from src.db.models.gse import GSE
 from src.exception.geo_error import GEOError
 from src.test.helpers.http import create_mock_response
 

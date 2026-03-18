@@ -3,7 +3,7 @@ from unittest.mock import Mock
 
 import requests
 
-from src.db.elink_dataset_linker import ELinkDatasetLinker
+from src.db.linkers.elink_dataset_linker import ELinkDatasetLinker
 from src.exception.entrez_error import EntrezError
 from src.test.helpers.http import create_mock_response
 
