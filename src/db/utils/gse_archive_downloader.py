@@ -20,12 +20,12 @@ logger = logging.getLogger(__name__)
 class GSEArchiveDownloader:
     """Service that downloads GEO archives and validates gzip integrity."""
 
-    def __init__(self, config: Config, session: aiohttp.ClientSession) -> None:
+    def __init__(self, config: Config, session: aiohttp.ClientSession, dont_redownload: bool) -> None:
         self.download_folder = config.dataset_download_folder
         self.max_connections = config.max_ncbi_connections
         self.semaphore = asyncio.Semaphore(self.max_connections)
         self.session = session
-        self.dont_redownload = config.dont_redownload
+        self.dont_redownload = dont_redownload
 
     @retry(stop=stop_after_attempt(RETRY_ATTEMPTS), reraise=True)
     async def download_gzip(self, download_path: str, url: str) -> None:

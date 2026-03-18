@@ -2,7 +2,7 @@ import asyncio
 import datetime
 import logging
 from concurrent.futures import ProcessPoolExecutor
-from typing import TYPE_CHECKING, List
+from typing import List
 
 import aiohttp
 
@@ -59,6 +59,7 @@ class GEOmetadbBackfiller:
             end_date: datetime.datetime,
             skip_existing: bool = True,
             ignore_failures: bool = False,
+            dont_redownload: bool = False,
     ) -> list[GSE]:
         """
         Download and persist GEO datasets from the given date range.
@@ -67,6 +68,7 @@ class GEOmetadbBackfiller:
         :param end_date: Inclusive end date.
         :param skip_existing: If True, skip datasets already in geometadb.
         :param ignore_failures: If True, continue after stage failures.
+        :param dont_redownload: If True, does not re-download archives that have already been downloaded.
         :return: Successfully parsed and saved GSE objects.
         """
         if end_date < start_date:
@@ -74,7 +76,7 @@ class GEOmetadbBackfiller:
 
         gse_accessions = get_gse_ids_by_last_update_date(start_date, end_date)
         return asyncio.run(
-            self.download_datasets(gse_accessions, skip_existing=skip_existing, ignore_failures=ignore_failures),
+            self.download_datasets(gse_accessions, skip_existing=skip_existing, ignore_failures=ignore_failures, dont_redownload=dont_redownload),
             debug=True,
         )
 
@@ -106,6 +108,7 @@ class GEOmetadbBackfiller:
             gse_accessions: list[str],
             skip_existing: bool = True,
             ignore_failures: bool = False,
+            dont_redownload: bool = False,
     ) -> List[GSE]:
         """
         Run the backfill pipeline as parallel per-accession tasks.
@@ -185,12 +188,17 @@ if __name__ == "__main__":
     parser.add_argument(
         "--skip-existing",
         action="store_true",
-        help="If True, datasets that already exist in the database will not be re-downloaded.",
+        help="If True, datasets that already exist in the database will be skipped",
     )
     parser.add_argument(
         "--ignore-failures",
         action="store_true",
         help="If True, datasets that fail to download or parse will be ignored.",
+    )
+    parser.add_argument(
+        "--dont-redownload",
+        action="store_true",
+        help="If True, archives that have already been downloaded will not be re-downloaded. However, they will be parsed and saved.",
     )
     args = parser.parse_args()
     logger.setLevel(logging.WARNING)
@@ -199,4 +207,4 @@ if __name__ == "__main__":
     gse_repository = GSERepository(config.geometadb_path)
     gsm_repository = GSMRepository(config.geometadb_path)
     backfiller = GEOmetadbBackfiller(config, gse_repository, gsm_repository)
-    backfiller.backfill_geometadb(args.start_date, args.end_date, args.skip_existing, args.ignore_failures)
+    backfiller.backfill_geometadb(args.start_date, args.end_date, args.skip_existing, args.ignore_failures, args.dont_redownload)

@@ -36,7 +36,6 @@ class Config:
         self.big_dataset_parser_workers = self._parse_positive_int(params, 'big_dataset_parser_workers')
         self.big_gzip_threshold_mb = self._parse_positive_float(params, 'big_gzip_threshold_mb')
         self.chunk_size = self._parse_positive_int(params, 'chunk_size')
-        self.dont_redownload = params.getboolean('dont_redownload')
 
         if not os.path.exists(self.dataset_download_folder):
             os.makedirs(self.dataset_download_folder)
