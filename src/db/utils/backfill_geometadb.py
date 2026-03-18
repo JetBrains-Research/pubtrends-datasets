@@ -33,6 +33,7 @@ async def tqdm_gather(*fs, return_exceptions=False, **kwargs):
 
     return await tqdm.gather(*map(wrap, fs), **kwargs)
 
+
 class GEOmetadbBackfiller:
     """Coordinates download, parse, and save stages for GEO backfill."""
 
@@ -124,12 +125,13 @@ class GEOmetadbBackfiller:
             self.dataset_parser_workers,
         )
 
-        with (ProcessPoolExecutor(self.big_dataset_parser_workers, initializer=configure_log_file) as big_dataset_executor,
-              ProcessPoolExecutor(self.small_dataset_parser_workers, initializer=configure_log_file) as small_dataset_executor,):
+        with (ProcessPoolExecutor(self.big_dataset_parser_workers,
+                                  initializer=configure_log_file) as big_dataset_executor,
+              ProcessPoolExecutor(self.small_dataset_parser_workers, initializer=configure_log_file) as small_dataset_executor):
             async with aiohttp.ClientSession(
                     raise_for_status=True,
                     timeout=aiohttp.ClientTimeout(total=None, sock_connect=10, sock_read=10),
-                    connector=aiohttp.TCPConnector(limit=self.dataset_parser_workers),
+                    connector=aiohttp.TCPConnector(limit=self.config.max_ncbi_connections),
             ) as session:
                 loop = asyncio.get_running_loop()
                 downloader = GSEArchiveDownloader(self.config, session)
@@ -137,7 +139,6 @@ class GEOmetadbBackfiller:
                 writer = DatasetWritingService(
                     gse_repository=self.gse_repository,
                     gsm_repository=self.gsm_repository,
-                    batch_size=self.chunk_size,
                 )
 
                 async def process_single_dataset(accession: str) -> GSE:
@@ -156,6 +157,7 @@ class GEOmetadbBackfiller:
                     return await tqdm_gather(*pipeline_tasks, return_exceptions=ignore_failures)
                 else:
                     return await asyncio.gather(*pipeline_tasks, return_exceptions=ignore_failures)
+
 
 if __name__ == "__main__":
     import argparse

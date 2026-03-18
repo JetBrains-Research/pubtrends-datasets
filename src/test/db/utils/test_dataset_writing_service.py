@@ -20,7 +20,7 @@ class TestDatasetWritingService(unittest.IsolatedAsyncioTestCase):
     async def test_add_flushes_on_batch_size(self) -> None:
         gse_repository = Mock()
         gsm_repository = Mock()
-        writer = DatasetWritingService(gse_repository, gsm_repository, batch_size=2)
+        writer = DatasetWritingService(gse_repository, gsm_repository)
 
         future1 = writer.add(self._parsed_dataset("GSE1"))
         gse_repository.save_gses.assert_not_called()
@@ -34,7 +34,7 @@ class TestDatasetWritingService(unittest.IsolatedAsyncioTestCase):
     async def test_flush_persists_remaining_items(self) -> None:
         gse_repository = Mock()
         gsm_repository = Mock()
-        writer = DatasetWritingService(gse_repository, gsm_repository, batch_size=10)
+        writer = DatasetWritingService(gse_repository, gsm_repository)
 
         task = writer.add(self._parsed_dataset("GSE1"))
         await task
