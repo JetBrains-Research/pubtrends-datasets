@@ -31,19 +31,21 @@ class GSEArchiveParser:
     def __init__(
         self,
         loop: asyncio.AbstractEventLoop,
-        executor,
+        big_dataset_executor,
+        small_dataset_executor,
         chunk_size: int,
         size_threshold_mb: int,
     ) -> None:
         self.loop = loop
-        self.executor = executor
+        self.big_dataset_executor = big_dataset_executor
+        self.small_dataset_executor = small_dataset_executor
         self.chunk_size = chunk_size
         self.size_threshold_mb = size_threshold_mb
         self.queue: asyncio.Queue[tuple[DownloadedArchive, asyncio.Future[ParsedDataset]]] = asyncio.Queue()
         self.last_batch_time = time.time()
         self.lock = asyncio.Lock()
         self.batch = []
-        self.flush_task = asyncio.create_task(_periodic_flush(self, 10))
+        self.flush_task = asyncio.create_task(_periodic_flush(self, 30))
         self._background_tasks = []
         self.last_flush_time = time.time()
 
@@ -53,8 +55,6 @@ class GSEArchiveParser:
     async def flush(self) -> None:
         """
         Parse a queued batch of small archives.
-
-        :param force: If True, parse immediately even if batch is smaller than chunk size.
         """
         batch: list[tuple[DownloadedArchive, asyncio.Future[ParsedDataset]]] = []
         async with self.lock:
@@ -76,7 +76,7 @@ class GSEArchiveParser:
         archives = [item[0] for item in batch]
         archive_paths = [archive.archive_path for archive in archives]
         results = await self.loop.run_in_executor(
-            self.executor,
+            self.small_dataset_executor,
             GSEArchiveParser.parse_dataset_batch,
             archive_paths,
         )
@@ -100,7 +100,7 @@ class GSEArchiveParser:
         size_mb = os.path.getsize(archive.archive_path) / (1024 * 1024)
         if size_mb > self.size_threshold_mb:
             gse, gsms = await self.loop.run_in_executor(
-                self.executor,
+                self.big_dataset_executor,
                 GSEArchiveParser._parse_dataset,
                 archive.archive_path,
             )

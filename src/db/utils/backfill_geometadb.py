@@ -15,9 +15,8 @@ from src.db.utils.get_geo_accessions_for_dates import get_gse_ids_by_last_update
 from src.db.utils.gse_archive_downloader import GSEArchiveDownloader
 from tqdm.asyncio import tqdm_asyncio as tqdm
 
-if TYPE_CHECKING:
-    from src.db.repositories.gse_repository import GSERepository
-    from src.db.repositories.gsm_repository import GSMRepository
+from src.db.repositories.gse_repository import GSERepository
+from src.db.repositories.gsm_repository import GSMRepository
 
 logger = logging.getLogger(__name__)
 
@@ -40,15 +39,18 @@ class GEOmetadbBackfiller:
     def __init__(
             self,
             config: Config,
-            gse_repository: "GSERepository",
-            gsm_repository: "GSMRepository",
+            gse_repository: GSERepository,
+            gsm_repository: GSMRepository,
     ) -> None:
         self.config = config
         self.dataset_parser_workers = config.dataset_parser_workers
         self.gse_repository = gse_repository
         self.gsm_repository = gsm_repository
         self.show_progress = config.show_backfill_progress
-        self.write_batch_size = 128
+        self.chunk_size = config.chunk_size
+        self.big_gzip_threshold_mb = config.big_gzip_threshold_mb
+        self.small_dataset_parser_workers = config.small_dataset_parser_workers
+        self.big_dataset_parser_workers = config.big_dataset_parser_workers
 
     def backfill_geometadb(
             self,
@@ -122,18 +124,20 @@ class GEOmetadbBackfiller:
             self.dataset_parser_workers,
         )
 
-        with ProcessPoolExecutor(self.dataset_parser_workers, initializer=configure_log_file) as executor:
+        with (ProcessPoolExecutor(self.big_dataset_parser_workers, initializer=configure_log_file) as big_dataset_executor,
+              ProcessPoolExecutor(self.small_dataset_parser_workers, initializer=configure_log_file) as small_dataset_executor,):
             async with aiohttp.ClientSession(
                     raise_for_status=True,
                     timeout=aiohttp.ClientTimeout(total=None, sock_connect=10, sock_read=10),
+                    connector=aiohttp.TCPConnector(limit=self.dataset_parser_workers),
             ) as session:
                 loop = asyncio.get_running_loop()
                 downloader = GSEArchiveDownloader(self.config, session)
-                parser = GSEArchiveParser(loop, executor, 128, 5)
+                parser = GSEArchiveParser(loop, big_dataset_executor, small_dataset_executor, self.chunk_size, self.big_gzip_threshold_mb)
                 writer = DatasetWritingService(
                     gse_repository=self.gse_repository,
                     gsm_repository=self.gsm_repository,
-                    batch_size=self.write_batch_size,
+                    batch_size=self.chunk_size,
                 )
 
                 async def process_single_dataset(accession: str) -> GSE:
@@ -148,7 +152,10 @@ class GEOmetadbBackfiller:
                         raise
 
                 pipeline_tasks = [process_single_dataset(acc) for acc in accessions_to_process]
-                return await tqdm_gather(*pipeline_tasks, return_exceptions=ignore_failures)
+                if self.show_progress:
+                    return await tqdm_gather(*pipeline_tasks, return_exceptions=ignore_failures)
+                else:
+                    return await asyncio.gather(*pipeline_tasks, return_exceptions=ignore_failures)
 
 if __name__ == "__main__":
     import argparse

@@ -32,6 +32,11 @@ class Config:
         self.dataset_download_folder = params['dataset_download_folder']
         self.dataset_download_folder = os.path.expanduser(self.dataset_download_folder)
 
+        self.small_dataset_parser_workers = self._parse_positive_int(params, 'small_dataset_parser_workers')
+        self.big_dataset_parser_workers = self._parse_positive_int(params, 'big_dataset_parser_workers')
+        self.big_gzip_threshold_mb = self._parse_positive_float(params, 'big_gzip_threshold_mb')
+        self.chunk_size = self._parse_positive_int(params, 'chunk_size')
+
         if not os.path.exists(self.dataset_download_folder):
             os.makedirs(self.dataset_download_folder)
         elif not os.path.isdir(self.dataset_download_folder):
@@ -44,6 +49,16 @@ class Config:
             value = int(params[key])
             if value <= 0:
                 raise ValueError(f"{key} must be a positive integer")
+            return value
+        except ValueError as e:
+            raise ValueError(f"Invalid value for {key}: {params[key]}. {e}")
+
+    @staticmethod
+    def _parse_positive_float(params, key):
+        try:
+            value = float(params[key])
+            if value <= 0:
+                raise ValueError(f"{key} must be a positive float")
             return value
         except ValueError as e:
             raise ValueError(f"Invalid value for {key}: {params[key]}. {e}")

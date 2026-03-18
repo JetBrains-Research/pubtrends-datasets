@@ -10,7 +10,7 @@ from src.db.repositories.gse_repository import GSERepository
 from src.db.repositories.gsm_repository import GSMRepository
 
 
-async def _periodic_flush(service: 'DatasetWritingService', interval: int) -> None:
+async def _periodic_flush(service: DatasetWritingService, interval: int) -> None:
     while True:
         await asyncio.sleep(interval)
         await service.flush()
