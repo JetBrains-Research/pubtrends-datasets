@@ -137,7 +137,7 @@ class GEOmetadbBackfiller:
                     connector=aiohttp.TCPConnector(limit=self.config.max_ncbi_connections),
             ) as session:
                 loop = asyncio.get_running_loop()
-                downloader = GSEArchiveDownloader(self.config, session)
+                downloader = GSEArchiveDownloader(self.config, session, dont_redownload)
                 parser = GSEArchiveParser(loop, big_dataset_executor, small_dataset_executor, self.chunk_size, self.big_gzip_threshold_mb)
                 writer = DatasetWritingService(
                     gse_repository=self.gse_repository,
