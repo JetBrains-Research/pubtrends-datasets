@@ -1,7 +1,7 @@
 """Gene Expression Omnibus Sample (GSM) data model."""
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, List, Dict
 
 from src.db.models.mapper_registry import mapper_registry
 from sqlalchemy import Column, Index, PrimaryKeyConstraint, REAL, Text, Table
@@ -49,3 +49,31 @@ class GSM:
     supplementary_file: Optional[str] = field(default=None, metadata={"sa": Column(Text)})
     data_row_count: Optional[float] = field(default=None, metadata={"sa": Column(REAL)})
     channel_count: Optional[float] = field(default=None, metadata={"sa": Column(REAL)})
+
+    def _parse_characteristics(self, characteristics: List[str]) -> Dict[str, str]:
+        """
+        Parses the characterstics key value pairs and stores them in a
+        dictionary.
+        :param characteristics: Sample characterestics extracted from the
+        metadata from a sample.
+        :return: Dictionary where the keys are the names of the characteristics.
+        """
+        if characteristics is None:
+            return {}
+        characteristics_dict = {}
+        for characteristic in characteristics:
+            try:
+                key, value = characteristic.strip().split(":", 1)
+                characteristics_dict[key.lower()] = value.strip().lower()
+            except ValueError:
+                unparsed_key = "unparsed_characteristics"
+                current_unparsed = characteristics_dict.get(unparsed_key, "")
+                characteristics_dict[unparsed_key] = current_unparsed + \
+                                                     "|" + characteristic
+        return characteristics_dict
+
+    @property
+    def characteristics(self):
+        return self._parse_characteristics(self.characteristics_ch1.split(";") if self.characteristics_ch1 else [])
+
+

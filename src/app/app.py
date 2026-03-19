@@ -401,7 +401,8 @@ def get_relevant_datasets():
             pmid_gse_mappings = _link_pubmed_to_gse(pubmed_ids, http_session)
             gse_accessions = list(set(itertools.chain.from_iterable(pmid_gse_mappings.values())))
             gses = _get_gse_details(gse_accessions, http_session)
-        return jsonify(semantic_search.rank_by_relevance(gses, query))
+            gse_gsm_map = gsm_repository.get_gsms_for_gse(gse_accessions)
+        return jsonify(semantic_search.rank_by_relevance(gses, gse_gsm_map, query))
     except Exception as e:
         logger.exception(f'/relevant_datasets exception {e}')
         return jsonify({"error": str(e)}), 500
