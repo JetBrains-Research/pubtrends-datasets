@@ -21,13 +21,19 @@ This script will install the prerequisite packages using the [uv](https://github
 
 After the script finishes, please edit and copy the `config.properties` file to `~/.pubtrends-datasets/config.properties`.
 
-## Database migration
+### Running the sentence-transformers service
+The app uses this service to generate text embeddings for the Relevant Datasets feature.
 
-Database migrations are managed using `flask-migrate`. To migrate the database to the newest version, run:
-```aiignore
-uv run flask --app src.app.app db upgrade
-```
-The migrations need to be applied manually whenever the database schema changes.
+#### Prerequisites for GPU Acceleration:
+To use the --gpu flag, you must have a CUDA-capable GPU and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) installed.
+
+#### Deployment steps:
+1. Build the sentence-transformers container: 
+```scripts/build_sentence_transformers_container.sh```
+2. Run the container: 
+```scripts/run_sentence_transformers_container.sh```
+ 
+Once started, the `pubtrends-embeddings` container will be available on port 5001.
 
 ## GEO dataset downloading and processing
 
@@ -43,6 +49,7 @@ Positional arguments:
 Flags:
 - `--ignore-failures` - Continue processing even if dataset updates fail.
 - `--skip-existing` - Skip datasets already present in the local database
+- `--dont-redownload` - Prevents dataset archive files that were downloaded from being redownloaded. However, they will still be processed.
 
 To keep the database up to date, we suggest adding the following cron job via `crontab -e`:
 ```aiignore
