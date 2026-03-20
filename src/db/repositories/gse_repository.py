@@ -9,10 +9,10 @@ from sqlalchemy import create_engine, event
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
-from src.db.gse import GSE
-from src.db.gse_loader import GSELoader
+from src.db.models.gse import GSE
+from src.db.loaders.gse_loader import GSELoader
 
 logger = logging.getLogger(__name__)
 MAX_PARALLEL_REQUESTS = 10
@@ -88,6 +88,9 @@ class GSERepository(GSELoader):
                 statement = (
                     select(GSE)
                     .where(GSE.gse.in_(gse_accessions))
+                    .options(
+                        selectinload(GSE.gse_gsm_links)
+                    )
                 )
                 return list(session.scalars(statement).all())
         except SQLAlchemyError as e:

@@ -1,7 +1,7 @@
 from typing import List, Dict
 
-from src.db.gse import GSE
-from src.db.gse_loader import GSELoader
+from src.db.models.gse import GSE
+from src.db.loaders.gse_loader import GSELoader
 
 
 class ChainedGSELoader(GSELoader):

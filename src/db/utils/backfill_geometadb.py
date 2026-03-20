@@ -15,10 +15,10 @@ from tenacity import retry, stop_after_attempt
 from tqdm.asyncio import tqdm_asyncio as tqdm
 
 from src.config.config import Config
-from src.db.geoparse_to_geometadb import format_geoparse_metadata
-from src.db.get_geo_accessions_for_dates import get_gse_ids_by_last_update_date
-from src.db.gse import GSE
-from src.db.gse_repository import GSERepository
+from src.db.loaders.geoparse_to_geometadb import format_geoparse_gse_metadata
+from src.db.utils.get_geo_accessions_for_dates import get_gse_ids_by_last_update_date
+from src.db.models.gse import GSE
+from src.db.repositories.gse_repository import GSERepository
 from src.helpers.is_gzip_vaild import is_gzip_valid
 from src.helpers.remove_if_exists import async_remove_if_exists
 from src.config.configure_log_file import configure_log_file
@@ -130,7 +130,7 @@ class GEOmetadbBackfiller:
         """
         try:
             geo = GEOparse.get_GEO(filepath=gzip_path, silent=True)
-            gse = from_dict(GSE, format_geoparse_metadata(geo.metadata))
+            gse = from_dict(GSE, format_geoparse_gse_metadata(geo.metadata))
             return gse
         except gzip.BadGzipFile as e:
             logger.exception(f"Error parsing GEO dataset archive - Invalid gzip file {gzip_path}")
