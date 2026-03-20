@@ -44,11 +44,11 @@ class GSE:
     supplementary_file: Optional[str] = field(default=None, metadata={"sa": Column(Text)})
 
     gse_gsm_links: List["GSE_GSM"] = field(default_factory=list, metadata={"sa": relationship("GSE_GSM")})
-    gsm_ids: AssociationProxy[List[str]] = field(default_factory=list, metadata={"sa": association_proxy("gse_gsm_links", "gsm")})
+    gsm_ids: AssociationProxy[List[str]] = field(default_factory=list,
+                                                 metadata={"sa": association_proxy("gse_gsm_links", "gsm")})
 
     def is_superseries(self):
         return self.summary == SUPERSERIES_SUMMARY
-
 
 
 @dataclass()
@@ -93,6 +93,3 @@ class GSE_DTO:
         self.contact = gse.contact
         self.supplementary_file = gse.supplementary_file
         self.gsm_ids = list(gse.gsm_ids)
-
-
-

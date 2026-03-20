@@ -7,7 +7,7 @@ from math import sqrt
 from parameterized import parameterized
 
 from src.config.config import Config
-from src.db.gse import GSE
+from src.db.models.gse import GSE
 from src.semantic_search.scored_gse import ScoredGSE
 from src.semantic_search.semantic_search import SemanticSearcher, get_chunks, \
     stable_deduplicate
