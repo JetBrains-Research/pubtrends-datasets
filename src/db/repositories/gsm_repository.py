@@ -50,8 +50,10 @@ class GSMRepository(GSMLoader):
         gse_gsm_links = [GSE_GSM(gse=gsm.series_id, gsm=gsm.gsm) for gsm in gsms]
         try:
             with Session(self.engine) as session:
-                session.add_all(gsms)
-                session.add_all(gse_gsm_links)
+                for gsm in gsms:
+                    session.merge(gsm)
+                for gse_gsm_link in gse_gsm_links:
+                    session.merge(gse_gsm_link)
                 session.commit()
         except SQLAlchemyError:
             logger.exception("Failed to save GEO samples to geometadb:")
@@ -73,23 +75,3 @@ class GSMRepository(GSMLoader):
         except SQLAlchemyError as e:
             logger.exception("Failed to load GEO samples from geometadb:")
             raise e
-
-    async def save_gsms_async(self, gsms: List[GSM]) -> None:
-        """
-        Saves GEO samples to the geometadb sqlite database asynchronously.
-
-        :param gsms: List of GEO samples to save.
-        """
-        if not gsms:
-            return
-        gse_gsm_links = [GSE_GSM(gse=gsm.series_id, gsm=gsm.gsm) for gsm in gsms]
-        try:
-            async with AsyncSession(self.async_engine) as session:
-                for gsm in gsms:
-                    await session.merge(gsm)
-                for gse_gsm_link in gse_gsm_links:
-                    await session.merge(gse_gsm_link)
-                await session.commit()
-        except SQLAlchemyError:
-            logger.exception("Failed to save GEO samples to geometadb:")
-            raise
