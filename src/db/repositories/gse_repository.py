@@ -41,16 +41,6 @@ class GSERepository(GSELoader):
             logger.exception("Failed to save GEO datasets to geometadb:")
             raise
 
-    @staticmethod
-    async def executemany_with_retry(cursor, query, args):
-        for _ in range(3):
-            try:
-                await cursor.executemany(query, args)
-                return
-            except sqlite3.OperationalError:
-                pass
-        await cursor.executemany(query, args)
-
     def get_gses(self, gse_accessions: List[str]) -> List[GSE]:
         """
         Loads GEO datasets from the geometadb sqlite database.
