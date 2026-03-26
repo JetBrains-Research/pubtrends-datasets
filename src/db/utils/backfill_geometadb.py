@@ -9,8 +9,8 @@ import aiohttp
 from src.config.config import Config
 from src.config.configure_log_file import configure_log_file
 from src.db.models import GSE
-from src.db.utils.dataset_parsing_service import GSEArchiveParser
-from src.db.utils.dataset_writing_service import DatasetWritingService
+from src.db.utils.gse_archive_parser import GSEArchiveParser
+from src.db.utils.dataset_writer import DatasetWriter
 from src.db.utils.get_geo_accessions_for_dates import get_gse_ids_by_last_update_date
 from src.db.utils.gse_archive_downloader import GSEArchiveDownloader
 from tqdm.asyncio import tqdm_asyncio as tqdm
@@ -144,7 +144,7 @@ class GEOmetadbBackfiller:
                 downloader = GSEArchiveDownloader(self.config, session, dont_redownload)
                 parser = GSEArchiveParser(loop, big_dataset_executor, small_dataset_executor, self.chunk_size,
                                           self.big_gzip_threshold_mb)
-                writer = DatasetWritingService(
+                writer = DatasetWriter(
                     gse_repository=self.gse_repository,
                     gsm_repository=self.gsm_repository,
                 )

@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import Mock
 
 from src.db.models import GSE, GSM
-from src.db.utils.dataset_writing_service import DatasetWritingService
+from src.db.utils.dataset_writer import DatasetWriter
 from src.db.utils.pipeline_models import ParsedDataset
 
 
@@ -19,7 +19,7 @@ class TestDatasetWritingService(unittest.IsolatedAsyncioTestCase):
     async def test_flush_persists_items(self) -> None:
         gse_repository = Mock()
         gsm_repository = Mock()
-        writer = DatasetWritingService(gse_repository, gsm_repository)
+        writer = DatasetWriter(gse_repository, gsm_repository)
 
         task = writer.add(self._parsed_dataset("GSE1"))
         await task

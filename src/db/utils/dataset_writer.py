@@ -5,7 +5,7 @@ from src.db.repositories.gsm_repository import GSMRepository
 from src.db.utils.pipeline_models import ParsedDataset
 
 
-class DatasetWritingService:
+class DatasetWriter:
     """Service that batches parsed datasets and persists them to repositories."""
 
     def __init__(
