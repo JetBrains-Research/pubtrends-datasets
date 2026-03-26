@@ -1,13 +1,8 @@
 import asyncio
-import threading
-import time
-from asyncio import shield
-
-from src.db.models import GSE, GSM
-from src.db.utils.pipeline_models import ParsedDataset
 
 from src.db.repositories.gse_repository import GSERepository
 from src.db.repositories.gsm_repository import GSMRepository
+from src.db.utils.pipeline_models import ParsedDataset
 
 
 class DatasetWritingService:

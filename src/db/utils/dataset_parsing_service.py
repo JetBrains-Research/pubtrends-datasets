@@ -20,7 +20,7 @@ from src.db.utils.pipeline_models import DownloadedArchive, ParsedDataset
 logger = logging.getLogger(__name__)
 
 
-async def _periodic_flush(parser: GSEArchiveParser, interval: int) -> None:
+async def _periodic_flush(parser: "GSEArchiveParser", interval: int) -> None:
     while True:
         await asyncio.sleep(interval)
         await parser.flush()
