@@ -82,24 +82,3 @@ class GSERepository(GSELoader):
         except SQLAlchemyError as e:
             logger.exception("Failed to load GEO datasets from geometadb:")
             raise e
-
-    async def get_gses_async(self, gse_accessions: List[str]) -> List[GSE]:
-        """
-        Loads GEO datasets from the geometadb sqlite database.
-
-        :param gse_accessions: List of GEO accessions for the datasets.
-        :return: List of GEO datasets
-        """
-        if not gse_accessions:
-            return []
-        try:
-            async with self.semaphore:
-                async with AsyncSession(self.async_engine) as session:
-                    statement = (
-                        select(GSE)
-                        .where(GSE.gse.in_(gse_accessions))
-                    )
-                    return list((await session.scalars(statement)).all())
-        except SQLAlchemyError:
-            logger.exception("Failed to load GEO datasets from geometadb:")
-            return []
