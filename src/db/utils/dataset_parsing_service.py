@@ -65,9 +65,12 @@ class GSEArchiveParser:
         if not batch:
             return
 
-        await self._parse_batch(batch)
+        await self._process_archive_batch(batch)
 
-    async def _parse_batch(self, batch: list[tuple[DownloadedArchive, Future[ParsedDataset]]]):
+    async def _process_archive_batch(self, batch: list[tuple[DownloadedArchive, Future[ParsedDataset]]]):
+        """
+        Parses a batch of small archives and sets the results in their associated futures.
+        """
         async with self.lock:
             self.last_flush_time = time.time()
 
@@ -75,7 +78,7 @@ class GSEArchiveParser:
         archive_paths = [archive.archive_path for archive in archives]
         results = await self.loop.run_in_executor(
             self.small_dataset_executor,
-            GSEArchiveParser.parse_dataset_batch,
+            GSEArchiveParser.parse_archives,
             archive_paths,
         )
         for (archive, future), (gse, gsms) in zip(batch, results):
@@ -88,18 +91,24 @@ class GSEArchiveParser:
                 )
             )
 
-    async def parse_dataset(self, archive: DownloadedArchive) -> ParsedDataset:
+    async def submit_archive_for_parsing(self, archive: DownloadedArchive) -> ParsedDataset:
         """
-        Parse one downloaded archive into domain models.
+        Submits an archive for parsing and returns the parsed dataset.
 
-        :param archive: Downloaded archive metadata.
-        :return: Parsed dataset payload.
+        This function determines whether the archive should be parsed with a specialized
+        executor for large datasets or queued for batch processing, based on the size of
+        the archive. For larger datasets exceeding the size threshold, the parsing is
+        offloaded to a dedicated executor (big_dataset_executor). For smaller datasets, the archive is added
+        to a batch of tasks that are processed when the batch size limit is reached.
+
+        :param archive: The gzip archive to parse, containing GEO dataset metadata.
+        :return: Parsed dataset containing information extracted from the archive.
         """
         size_mb = os.path.getsize(archive.archive_path) / (1024 * 1024)
         if size_mb > self.size_threshold_mb:
             gse, gsms = await self.loop.run_in_executor(
                 self.big_dataset_executor,
-                GSEArchiveParser._parse_dataset,
+                GSEArchiveParser._parse_archive,
                 archive.archive_path,
             )
             return ParsedDataset(
@@ -118,14 +127,14 @@ class GSEArchiveParser:
                 self.batch = []
 
         if batch_to_parse:
-            task = asyncio.create_task(self._parse_batch(batch_to_parse))
+            task = asyncio.create_task(self._process_archive_batch(batch_to_parse))
             self._background_tasks.append(task)
             task.add_done_callback(self._background_tasks.remove)
 
         return await shield(future)
 
     @staticmethod
-    def _parse_dataset(gzip_path: str) -> tuple[GSE, list[GSM]]:
+    def _parse_archive(gzip_path: str) -> tuple[GSE, list[GSM]]:
         """
         Parse one GEO dataset gzip file.
 
@@ -159,11 +168,11 @@ class GSEArchiveParser:
             raise exc
 
     @staticmethod
-    def parse_dataset_batch(gzip_paths: list[str]) -> list[tuple[GSE, list[GSM]]]:
+    def parse_archives(gzip_paths: list[str]) -> list[tuple[GSE, list[GSM]]]:
         """
         Parse multiple GEO dataset archives.
 
         :param gzip_paths: Archive paths.
         :return: Parsed results in input order.
         """
-        return list(map(GSEArchiveParser._parse_dataset, gzip_paths))
+        return list(map(GSEArchiveParser._parse_archive, gzip_paths))

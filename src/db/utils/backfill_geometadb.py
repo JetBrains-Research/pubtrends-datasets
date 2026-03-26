@@ -148,7 +148,7 @@ class GEOmetadbBackfiller:
                     """Download, parse, and write a single dataset through the pipeline."""
                     try:
                         downloaded_archive = await downloader.download_gse_archive(accession)
-                        parsed_dataset = await parser.parse_dataset(downloaded_archive)
+                        parsed_dataset = await parser.submit_archive_for_parsing(downloaded_archive)
                         written_parsed_dataset = await writer.add(parsed_dataset)
                         return written_parsed_dataset.gse
                     except Exception:

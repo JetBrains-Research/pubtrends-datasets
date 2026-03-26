@@ -55,7 +55,7 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         mock_parsed_dataset.gsms = []
 
         self.mock_downloader.return_value.download_gse_archive = AsyncMock(return_value=mock_downloaded_archive)
-        self.mock_parser.return_value.parse_dataset = AsyncMock(return_value=mock_parsed_dataset)
+        self.mock_parser.return_value.submit_archive_for_parsing = AsyncMock(return_value=mock_parsed_dataset)
         self.mock_writer.return_value.add = AsyncMock(return_value=mock_parsed_dataset)
 
         datasets = self.backfiller.backfill_geometadb(self.start_date, self.end_date)
@@ -94,12 +94,12 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         mock_downloaded_archive.archive_path = "/tmp/test.gz"
 
         self.mock_downloader.return_value.download_gse_archive = AsyncMock(return_value=mock_downloaded_archive)
-        self.mock_parser.return_value.parse_dataset = AsyncMock(side_effect=throwable)
+        self.mock_parser.return_value.submit_archive_for_parsing = AsyncMock(side_effect=throwable)
 
         self.assertRaises(type(throwable), self.backfiller.backfill_geometadb, self.start_date, self.end_date)
         self.mock_get_accessions.assert_called_once()
         self.mock_downloader.return_value.download_gse_archive.assert_called_once()
-        self.mock_parser.return_value.parse_dataset.assert_called_once()
+        self.mock_parser.return_value.submit_archive_for_parsing.assert_called_once()
         self.mock_writer.return_value.add.assert_not_called()
 
     def test_backfill_geometadb_invalid_date_range(self):
@@ -145,7 +145,7 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
                 raise ValueError("Parse error")
             return mock_parsed_dataset
 
-        self.mock_parser.return_value.parse_dataset = AsyncMock(side_effect=parse_side_effect)
+        self.mock_parser.return_value.submit_archive_for_parsing = AsyncMock(side_effect=parse_side_effect)
         self.mock_writer.return_value.add = AsyncMock(return_value=mock_parsed_dataset)
 
         datasets = self.backfiller.backfill_geometadb(
@@ -157,5 +157,5 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         self.assertIsInstance(datasets[0], ValueError)
         self.assertEqual(datasets[1].gse, "GSE000001")
         self.assertEqual(self.mock_downloader.return_value.download_gse_archive.call_count, 2)
-        self.assertEqual(self.mock_parser.return_value.parse_dataset.call_count, 2)
+        self.assertEqual(self.mock_parser.return_value.submit_archive_for_parsing.call_count, 2)
         self.mock_writer.return_value.add.assert_called_once()
