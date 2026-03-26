@@ -1,7 +1,5 @@
-import sqlalchemy
 from sqlalchemy import create_engine, Engine
 from sqlalchemy.event import listens_for
-from sqlalchemy.ext.asyncio import AsyncEngine
 
 
 def create_sync_engine(sqlite_path: str):

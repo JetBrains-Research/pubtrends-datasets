@@ -42,8 +42,10 @@ class GSE:
     contact: Optional[str] = field(default=None, metadata={"sa": Column(Text)})
     supplementary_file: Optional[str] = field(default=None, metadata={"sa": Column(Text)})
 
-    gse_gsm_links: List["GSE_GSM"] = field(default_factory=list, metadata={"sa": relationship("GSE_GSM", viewonly=True)})
-    gsm_ids: AssociationProxy[List[str]] = field(default_factory=list, metadata={"sa": association_proxy("gse_gsm_links", "gsm")})
+    gse_gsm_links: List["GSE_GSM"] = field(default_factory=list,
+                                           metadata={"sa": relationship("GSE_GSM", viewonly=True)})
+    gsm_ids: AssociationProxy[List[str]] = field(default_factory=list,
+                                                 metadata={"sa": association_proxy("gse_gsm_links", "gsm")})
 
 
 @dataclass()
@@ -88,6 +90,3 @@ class GSE_DTO:
         self.contact = gse.contact
         self.supplementary_file = gse.supplementary_file
         self.gsm_ids = list(gse.gsm_ids)
-
-
-

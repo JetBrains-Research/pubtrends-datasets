@@ -1,10 +1,8 @@
 import unittest
-import os
-from typing import List
 
 from src.config.config import Config
-from src.db.repositories.gsm_repository import GSMRepository
 from src.db.models.gsm import GSM
+from src.db.repositories.gsm_repository import GSMRepository
 
 
 class TestGSMRepository(unittest.TestCase):

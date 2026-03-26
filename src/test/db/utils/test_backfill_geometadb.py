@@ -23,7 +23,8 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         self.gsm_repository.save_gsms = Mock()
 
         self.gse_accessions = ["GSE000000"]
-        self.mock_get_accessions = self.enterContext(patch("src.db.utils.backfill_geometadb.get_gse_ids_by_last_update_date"))
+        self.mock_get_accessions = self.enterContext(
+            patch("src.db.utils.backfill_geometadb.get_gse_ids_by_last_update_date"))
         self.mock_get_accessions.return_value = self.gse_accessions
 
         self.backfiller = GEOmetadbBackfiller(self.test_config, self.gse_repository, self.gsm_repository)

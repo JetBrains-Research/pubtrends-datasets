@@ -9,9 +9,9 @@ class DatasetWritingService:
     """Service that batches parsed datasets and persists them to repositories."""
 
     def __init__(
-        self,
-        gse_repository: GSERepository,
-        gsm_repository: GSMRepository,
+            self,
+            gse_repository: GSERepository,
+            gsm_repository: GSMRepository,
     ) -> None:
         self.gse_repository = gse_repository
         self.gsm_repository = gsm_repository
@@ -29,4 +29,3 @@ class DatasetWritingService:
             await asyncio.to_thread(self.gsm_repository.save_gsms, parsed_dataset.gsms)
 
         return parsed_dataset
-

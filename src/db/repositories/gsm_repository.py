@@ -26,7 +26,6 @@ class GSMRepository(GSMLoader):
         self.geometadb_path = geometadb_path
         self.semaphore = asyncio.Semaphore(MAX_PARALLEL_REQUESTS)
 
-
     def save_gsms(self, gsms: List[GSM]) -> None:
         """
         Saves GEO samples to the geometadb sqlite database.

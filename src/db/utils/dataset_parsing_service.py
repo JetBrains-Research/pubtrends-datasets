@@ -25,16 +25,17 @@ async def _periodic_flush(parser: "GSEArchiveParser", interval: int) -> None:
         await asyncio.sleep(interval)
         await parser.flush()
 
+
 class GSEArchiveParser:
     """Service that parses downloaded GEO archives using a process pool."""
 
     def __init__(
-        self,
-        loop: asyncio.AbstractEventLoop,
-        big_dataset_executor,
-        small_dataset_executor,
-        chunk_size: int,
-        big_dataset_size_threshold_mb: int,
+            self,
+            loop: asyncio.AbstractEventLoop,
+            big_dataset_executor,
+            small_dataset_executor,
+            chunk_size: int,
+            big_dataset_size_threshold_mb: int,
     ) -> None:
         self.loop = loop
         self.big_dataset_executor = big_dataset_executor

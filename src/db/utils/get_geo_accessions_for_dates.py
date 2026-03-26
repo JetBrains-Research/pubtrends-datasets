@@ -7,6 +7,7 @@ from urllib.request import urlopen, URLError
 
 ESEARCH_BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 
+
 def url_open(url, timeout=2, n_trials=5, sleep_time=2):
     """
     Try open given url during specified timeout

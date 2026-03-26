@@ -18,7 +18,6 @@ from tqdm.asyncio import tqdm_asyncio as tqdm
 from src.db.repositories.gse_repository import GSERepository
 from src.db.repositories.gsm_repository import GSMRepository
 
-
 RETRY_ATTEMPTS = 3
 GEO_FTP_HOST = "ftp.ncbi.nlm.nih.gov"
 logger = logging.getLogger(__name__)
@@ -79,7 +78,8 @@ class GEOmetadbBackfiller:
 
         gse_accessions = get_gse_ids_by_last_update_date(start_date, end_date)
         return asyncio.run(
-            self.download_datasets(gse_accessions, skip_existing=skip_existing, ignore_failures=ignore_failures, dont_redownload=dont_redownload),
+            self.download_datasets(gse_accessions, skip_existing=skip_existing, ignore_failures=ignore_failures,
+                                   dont_redownload=dont_redownload),
             debug=True,
         )
 
@@ -133,7 +133,8 @@ class GEOmetadbBackfiller:
 
         with (ProcessPoolExecutor(self.big_dataset_parser_workers,
                                   initializer=configure_log_file) as big_dataset_executor,
-              ProcessPoolExecutor(self.small_dataset_parser_workers, initializer=configure_log_file) as small_dataset_executor):
+              ProcessPoolExecutor(self.small_dataset_parser_workers,
+                                  initializer=configure_log_file) as small_dataset_executor):
             async with aiohttp.ClientSession(
                     raise_for_status=True,
                     timeout=aiohttp.ClientTimeout(total=None, sock_connect=10, sock_read=10),
@@ -141,7 +142,8 @@ class GEOmetadbBackfiller:
             ) as session:
                 loop = asyncio.get_running_loop()
                 downloader = GSEArchiveDownloader(self.config, session, dont_redownload)
-                parser = GSEArchiveParser(loop, big_dataset_executor, small_dataset_executor, self.chunk_size, self.big_gzip_threshold_mb)
+                parser = GSEArchiveParser(loop, big_dataset_executor, small_dataset_executor, self.chunk_size,
+                                          self.big_gzip_threshold_mb)
                 writer = DatasetWritingService(
                     gse_repository=self.gse_repository,
                     gsm_repository=self.gsm_repository,
@@ -210,4 +212,5 @@ if __name__ == "__main__":
     gse_repository = GSERepository(config.geometadb_path)
     gsm_repository = GSMRepository(config.geometadb_path)
     backfiller = GEOmetadbBackfiller(config, gse_repository, gsm_repository)
-    backfiller.backfill_geometadb(args.start_date, args.end_date, args.skip_existing, args.ignore_failures, args.dont_redownload)
+    backfiller.backfill_geometadb(args.start_date, args.end_date, args.skip_existing, args.ignore_failures,
+                                  args.dont_redownload)

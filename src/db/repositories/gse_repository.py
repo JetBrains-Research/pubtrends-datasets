@@ -7,7 +7,6 @@ from typing import List
 from sqlalchemy import event
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, selectinload
 
 from src.db.loaders.gse_loader import GSELoader
