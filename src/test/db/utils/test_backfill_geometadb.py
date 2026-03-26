@@ -16,7 +16,7 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
     def setUp(self):
         self.test_config = Config(test=True)
         self.gse_repository = Mock()
-        self.gse_repository.save_gses = Mock()
+        self.gse_repository.save_gses_with_gsms = Mock()
         self.gse_repository.get_gses = Mock(return_value=[])
 
         self.gsm_repository = Mock()

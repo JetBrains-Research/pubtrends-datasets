@@ -18,11 +18,9 @@ class TestDatasetWritingService(unittest.IsolatedAsyncioTestCase):
 
     async def test_flush_persists_items(self) -> None:
         gse_repository = Mock()
-        gsm_repository = Mock()
-        writer = DatasetWriter(gse_repository, gsm_repository)
+        writer = DatasetWriter(gse_repository)
 
         task = writer.add(self._parsed_dataset("GSE1"))
         await task
 
-        gse_repository.save_gses.assert_called_once()
-        gsm_repository.save_gsms.assert_called_once()
+        gse_repository.save_gses_with_gsms.assert_called_once()

@@ -144,7 +144,6 @@ class GEOmetadbBackfiller:
                 downloader = GSEArchiveDownloader(self.config, session, dont_redownload)
                 writer = DatasetWriter(
                     gse_repository=self.gse_repository,
-                    gsm_repository=self.gsm_repository,
                 )
 
                 async def process_single_dataset(accession: str) -> GSE:

@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
 from src.db.loaders.gse_loader import GSELoader
+from src.db.models import GSM, GSE_GSM
 from src.db.models.gse import GSE
 from src.db.repositories.sqlalchemy_engine_helpers import create_sync_engine
 
@@ -36,6 +37,23 @@ class GSERepository(GSELoader):
             with Session(self.engine) as session:
                 for gse in gses:
                     session.merge(gse)
+                session.commit()
+        except SQLAlchemyError:
+            logger.exception("Failed to save GEO datasets to geometadb:")
+            raise
+
+    def save_gses_with_gsms(self, gses: List[GSE], gsms: List[GSM]):
+        if not gses or not gsms:
+            return
+        try:
+            gse_gsm_links = [GSE_GSM(gsm.series_id, gsm.gsm) for gsm in gsms]
+            with Session(self.engine) as session:
+                for gse in gses:
+                    session.merge(gse)
+                for gsm in gsms:
+                    session.merge(gsm)
+                for link in gse_gsm_links:
+                    session.merge(link)
                 session.commit()
         except SQLAlchemyError:
             logger.exception("Failed to save GEO datasets to geometadb:")

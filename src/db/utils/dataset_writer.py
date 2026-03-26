@@ -11,10 +11,8 @@ class DatasetWriter:
     def __init__(
             self,
             gse_repository: GSERepository,
-            gsm_repository: GSMRepository,
     ) -> None:
         self.gse_repository = gse_repository
-        self.gsm_repository = gsm_repository
         self._lock = asyncio.Lock()
 
     async def add(self, parsed_dataset: ParsedDataset) -> ParsedDataset:
@@ -25,7 +23,6 @@ class DatasetWriter:
         :return: Parsed dataset payload.
         """
         async with self._lock:
-            await asyncio.to_thread(self.gse_repository.save_gses, [parsed_dataset.gse])
-            await asyncio.to_thread(self.gsm_repository.save_gsms, parsed_dataset.gsms)
+            await asyncio.to_thread(self.gse_repository.save_gses_with_gsms([parsed_dataset.gse], parsed_dataset.gsms))
 
         return parsed_dataset
