@@ -3,16 +3,15 @@ import logging
 import os
 from typing import List
 
-from sqlalchemy import create_engine, event, select
-from sqlalchemy.event import listens_for
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import Session
 
 from src.db.loaders.gsm_loader import GSMLoader
 from src.db.models import GSE_GSM
 from src.db.models.gsm import GSM
 from src.db.repositories.gse_repository import MAX_PARALLEL_REQUESTS
+from src.db.repositories.sqlalchemy_engine_helpers import create_sync_engine
 
 logger = logging.getLogger(__name__)
 
@@ -23,21 +22,10 @@ class GSMRepository(GSMLoader):
             raise RuntimeError(f"Geometadb file {geometadb_path} does not exist")
         if not os.access(geometadb_path, os.W_OK):
             raise RuntimeError(f"Geometadb file {geometadb_path} is not writable")
-        self.engine = create_engine(f"sqlite:///{geometadb_path}")
-        self.async_engine = create_async_engine(f"sqlite+aiosqlite:///{geometadb_path}", connect_args={"timeout": 15})
+        self.engine = create_sync_engine(f"sqlite:///{geometadb_path}")
         self.geometadb_path = geometadb_path
         self.semaphore = asyncio.Semaphore(MAX_PARALLEL_REQUESTS)
 
-        @event.listens_for(self.engine, "connect")
-        def set_sqlite_text_factory(dbapi_connection, connection_record):
-            dbapi_connection.text_factory = lambda x: x.decode(errors="replace")
-
-        @listens_for(self.async_engine.sync_engine, "connect")
-        def set_sqlite_pragma(dbapi_connection, connection_record):
-            cursor = dbapi_connection.cursor()
-            cursor.execute("PRAGMA journal_mode=WAL")
-            cursor.execute("PRAGMA synchronous=NORMAL")
-            cursor.close()
 
     def save_gsms(self, gsms: List[GSM]) -> None:
         """
