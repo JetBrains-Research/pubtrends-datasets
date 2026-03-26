@@ -34,15 +34,13 @@ class GSEArchiveParser:
         big_dataset_executor,
         small_dataset_executor,
         chunk_size: int,
-        size_threshold_mb: int,
+        big_dataset_size_threshold_mb: int,
     ) -> None:
         self.loop = loop
         self.big_dataset_executor = big_dataset_executor
         self.small_dataset_executor = small_dataset_executor
         self.chunk_size = chunk_size
-        self.size_threshold_mb = size_threshold_mb
-        self.queue: asyncio.Queue[tuple[DownloadedArchive, asyncio.Future[ParsedDataset]]] = asyncio.Queue()
-        self.last_batch_time = time.time()
+        self.size_threshold_mb = big_dataset_size_threshold_mb
         self.lock = asyncio.Lock()
         self.batch = []
         self.flush_task = asyncio.create_task(_periodic_flush(self, 30))
