@@ -1,4 +1,5 @@
 import unittest
+from collections import defaultdict
 from typing import List, Dict
 from unittest.mock import patch
 
@@ -154,14 +155,13 @@ class TestSemanticSearch(unittest.TestCase):
                                expected_result: List[GSE]):
         self.fetch_texts_embedding.side_effect = lambda texts, url: TestSemanticSearch._mock_fetch_texts_embedding(
             texts, embeddings_if_word_present)
-        result = self.semantic_search.rank_by_relevance(GSEs_TO_SEARCH, query)
+        result = self.semantic_search.rank_by_relevance(GSEs_TO_SEARCH, defaultdict(list), query)
         # Once for the query and another time for GSEs
         self.assertGreaterEqual(self.fetch_texts_embedding.call_count, 2)
         for i, scored_gse in enumerate(result):
-            self.assertEqual(scored_gse.gse, expected_result[i].gse)
-            print(scored_gse.gse.title)
+            self.assertEqual(scored_gse.gse.gse, expected_result[i].gse.gse)
             self.assertAlmostEqual(scored_gse.score, expected_result[i].score)
 
     def test_rank_by_relevance_empty_input(self):
-        result = self.semantic_search.rank_by_relevance([], "query")
+        result = self.semantic_search.rank_by_relevance([], defaultdict(list), "query")
         self.assertEqual(result, [])
