@@ -18,6 +18,9 @@ from tqdm.asyncio import tqdm_asyncio as tqdm
 from src.db.repositories.gse_repository import GSERepository
 from src.db.repositories.gsm_repository import GSMRepository
 
+
+RETRY_ATTEMPTS = 3
+GEO_FTP_HOST = "ftp.ncbi.nlm.nih.gov"
 logger = logging.getLogger(__name__)
 
 

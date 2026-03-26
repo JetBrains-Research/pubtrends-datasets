@@ -6,12 +6,12 @@ from typing import List
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.event import listens_for
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import Session
 
+from src.db.loaders.gsm_loader import GSMLoader
 from src.db.models import GSE_GSM
 from src.db.models.gsm import GSM
-from src.db.loaders.gsm_loader import GSMLoader
 from src.db.repositories.gse_repository import MAX_PARALLEL_REQUESTS
 
 logger = logging.getLogger(__name__)

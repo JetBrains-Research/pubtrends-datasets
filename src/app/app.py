@@ -6,7 +6,6 @@ from dataclasses import asdict
 import requests
 from flasgger import Swagger
 from flask import Flask, request, jsonify
-from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 
 from src.app.swagger_template import swagger_template
@@ -32,7 +31,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{CONFIG.geometadb_path}"
 
 db = SQLAlchemy(metadata=mapper_registry.metadata)
 db.init_app(app)
-migrate = Migrate(app, db)
 
 gse_repository = GSERepository(CONFIG.geometadb_path)
 gsm_repository = GSMRepository(CONFIG.geometadb_path)
@@ -98,27 +96,20 @@ def _get_gsm_details(gsm_accessions: list[str], http_session) -> list[GSM]:
     return chained_loader.get_gsms(gsm_accessions)
 
 
-@app.route('/pubmed-to-gse', methods=['GET', 'POST'])
+@app.route('/pubmed-to-gse', methods=['POST'])
 def get_pubmed_to_gse():
     """
-    GET/POST endpoint to retrieve GSE accession numbers associated with PubMed IDs.
+    POST endpoint to retrieve GSE accession numbers associated with PubMed IDs.
     ---
     summary: Get GSE accession numbers for PubMed IDs
     description: |
       Retrieves a mapping of PubMed IDs to their associated Gene Expression Omnibus Series (GSE) accession numbers.
-      For GET: provide comma-separated PubMed IDs in query parameter.
-      For POST: provide JSON array of PubMed IDs in request body.
+      Provide JSON array of PubMed IDs in request body.
     parameters:
-      - name: pubmed_ids
-        in: query
-        type: string
-        required: false
-        description: (GET only) Comma-separated list of PubMed IDs (e.g., "30530648,31018141")
-        example: "30530648,31018141"
       - name: body
         in: body
-        required: false
-        description: (POST only) JSON array of PubMed IDs
+        required: true
+        description: JSON array of PubMed IDs
         schema:
           type: object
           properties:
@@ -155,21 +146,14 @@ def get_pubmed_to_gse():
     """
     logger.info(f'/pubmed-to-gse {log_request(request)}')
 
-    if request.method == 'POST':
-        data = request.get_json()
-        if not data or 'pubmed_ids' not in data:
-            logger.error(f'/pubmed-to-gse error {log_request(request)}')
-            return jsonify({"error": "pubmed_ids parameter is required"}), 400
-        pubmed_ids = data['pubmed_ids']
-        if not isinstance(pubmed_ids, list):
-            return jsonify({"error": "pubmed_ids must be an array"}), 400
-        pubmed_ids = [str(pid).strip() for pid in pubmed_ids if str(pid).strip()]
-    else:
-        pubmed_ids_param = request.args.get('pubmed_ids', '')
-        if not pubmed_ids_param:
-            logger.error(f'/pubmed-to-gse error {log_request(request)}')
-            return jsonify({"error": "pubmed_ids parameter is required"}), 400
-        pubmed_ids = [pid.strip() for pid in pubmed_ids_param.split(',') if pid.strip()]
+    data = request.get_json()
+    if not data or 'pubmed_ids' not in data:
+        logger.error(f'/pubmed-to-gse error {log_request(request)}')
+        return jsonify({"error": "pubmed_ids parameter is required"}), 400
+    pubmed_ids = data['pubmed_ids']
+    if not isinstance(pubmed_ids, list):
+        return jsonify({"error": "pubmed_ids must be an array"}), 400
+    pubmed_ids = [str(pid).strip() for pid in pubmed_ids if str(pid).strip()]
 
     if not pubmed_ids:
         return jsonify({"error": "At least one valid PubMed ID is required"}), 400
@@ -184,27 +168,20 @@ def get_pubmed_to_gse():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/gse-details', methods=['GET', 'POST'])
+@app.route('/gse-details', methods=['POST'])
 def get_gse_details():
     """
-    GET/POST endpoint to retrieve detailed GSE objects by GSE accession numbers.
+    POST endpoint to retrieve detailed GSE objects by GSE accession numbers.
     ---
     summary: Get detailed GSE information by accession numbers
     description: |
       Retrieves detailed Gene Expression Omnibus Series (GSE) dataset information for the provided GSE accession numbers.
-      For GET: provide comma-separated GSE accessions in query parameter.
-      For POST: provide JSON array of GSE accessions in request body.
+      Provide JSON array of GSE accessions in request body.
     parameters:
-      - name: gse_accessions
-        in: query
-        type: string
-        required: false
-        description: (GET only) Comma-separated list of GSE accession numbers (e.g., "GSE116672,GSE127884")
-        example: "GSE116672,GSE127884"
       - name: body
         in: body
-        required: false
-        description: (POST only) JSON array of GSE accessions
+        required: true
+        description: JSON array of GSE accessions
         schema:
           type: object
           properties:
@@ -245,21 +222,14 @@ def get_gse_details():
     """
     logger.info(f'/gse-details {log_request(request)}')
 
-    if request.method == 'POST':
-        data = request.get_json()
-        if not data or 'gse_accessions' not in data:
-            logger.error(f'/gse-details error {log_request(request)}')
-            return jsonify({"error": "gse_accessions parameter is required"}), 400
-        gse_accessions = data['gse_accessions']
-        if not isinstance(gse_accessions, list):
-            return jsonify({"error": "gse_accessions must be an array"}), 400
-        gse_accessions = [str(acc).strip() for acc in gse_accessions if str(acc).strip()]
-    else:
-        gse_accessions_param = request.args.get('gse_accessions', '')
-        if not gse_accessions_param:
-            logger.error(f'/gse-details error {log_request(request)}')
-            return jsonify({"error": "gse_accessions parameter is required"}), 400
-        gse_accessions = [acc.strip() for acc in gse_accessions_param.split(',') if acc.strip()]
+    data = request.get_json()
+    if not data or 'gse_accessions' not in data:
+        logger.error(f'/gse-details error {log_request(request)}')
+        return jsonify({"error": "gse_accessions parameter is required"}), 400
+    gse_accessions = data['gse_accessions']
+    if not isinstance(gse_accessions, list):
+        return jsonify({"error": "gse_accessions must be an array"}), 400
+    gse_accessions = [str(acc).strip() for acc in gse_accessions if str(acc).strip()]
 
     if not gse_accessions:
         return jsonify({"error": "At least one valid GSE accession is required"}), 400
@@ -275,27 +245,20 @@ def get_gse_details():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/gsm-details', methods=['GET', 'POST'])
+@app.route('/gsm-details', methods=['POST'])
 def get_gsm_details():
     """
-    GET/POST endpoint to retrieve detailed GSM objects by GSM accession numbers.
+    POST endpoint to retrieve detailed GSM objects by GSM accession numbers.
     ---
     summary: Get detailed GSM information by accession numbers
     description: |
       Retrieves detailed Gene Expression Omnibus Sample (GSM) information for the provided GSM accession numbers.
-      For GET: provide comma-separated GSM accessions in query parameter.
-      For POST: provide JSON array of GSM accessions in request body.
+      Provide JSON array of GSM accessions in request body.
     parameters:
-      - name: gsm_accessions
-        in: query
-        type: string
-        required: false
-        description: (GET only) Comma-separated list of GSM accession numbers (e.g., "GSM123456,GSM789012")
-        example: "GSM123456,GSM789012"
       - name: body
         in: body
-        required: false
-        description: (POST only) JSON array of GSM accessions
+        required: true
+        description: JSON array of GSM accessions
         schema:
           type: object
           properties:
@@ -336,21 +299,14 @@ def get_gsm_details():
     """
     logger.info(f'/gsm-details {log_request(request)}')
 
-    if request.method == 'POST':
-        data = request.get_json()
-        if not data or 'gsm_accessions' not in data:
-            logger.error(f'/gsm-details error {log_request(request)}')
-            return jsonify({"error": "gsm_accessions parameter is required"}), 400
-        gsm_accessions = data['gsm_accessions']
-        if not isinstance(gsm_accessions, list):
-            return jsonify({"error": "gsm_accessions must be an array"}), 400
-        gsm_accessions = [str(acc).strip() for acc in gsm_accessions if str(acc).strip()]
-    else:
-        gsm_accessions_param = request.args.get('gsm_accessions', '')
-        if not gsm_accessions_param:
-            logger.error(f'/gsm-details error {log_request(request)}')
-            return jsonify({"error": "gsm_accessions parameter is required"}), 400
-        gsm_accessions = [acc.strip() for acc in gsm_accessions_param.split(',') if acc.strip()]
+    data = request.get_json()
+    if not data or 'gsm_accessions' not in data:
+        logger.error(f'/gsm-details error {log_request(request)}')
+        return jsonify({"error": "gsm_accessions parameter is required"}), 400
+    gsm_accessions = data['gsm_accessions']
+    if not isinstance(gsm_accessions, list):
+        return jsonify({"error": "gsm_accessions must be an array"}), 400
+    gsm_accessions = [str(acc).strip() for acc in gsm_accessions if str(acc).strip()]
 
     if not gsm_accessions:
         return jsonify({"error": "At least one valid GSM accession is required"}), 400
