@@ -22,7 +22,7 @@ class GSMRepository(GSMLoader):
             raise RuntimeError(f"Geometadb file {geometadb_path} does not exist")
         if not os.access(geometadb_path, os.W_OK):
             raise RuntimeError(f"Geometadb file {geometadb_path} is not writable")
-        self.engine = create_sync_engine(f"sqlite:///{geometadb_path}")
+        self.engine = create_sync_engine(geometadb_path)
         self.geometadb_path = geometadb_path
         self.semaphore = asyncio.Semaphore(MAX_PARALLEL_REQUESTS)
 
