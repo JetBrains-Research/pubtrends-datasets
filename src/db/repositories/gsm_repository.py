@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import os
 from typing import List
@@ -10,7 +9,6 @@ from sqlalchemy.orm import Session
 from src.db.loaders.gsm_loader import GSMLoader
 from src.db.models import GSE_GSM
 from src.db.models.gsm import GSM
-from src.db.repositories.gse_repository import MAX_PARALLEL_REQUESTS
 from src.db.repositories.sqlalchemy_engine_helpers import create_sync_engine
 
 logger = logging.getLogger(__name__)
@@ -24,7 +22,6 @@ class GSMRepository(GSMLoader):
             raise RuntimeError(f"Geometadb file {geometadb_path} is not writable")
         self.engine = create_sync_engine(geometadb_path)
         self.geometadb_path = geometadb_path
-        self.semaphore = asyncio.Semaphore(MAX_PARALLEL_REQUESTS)
 
     def save_gsms(self, gsms: List[GSM]) -> None:
         """

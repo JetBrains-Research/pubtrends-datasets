@@ -4,7 +4,6 @@ import os
 import sqlite3
 from typing import List
 
-from sqlalchemy import event
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
@@ -14,7 +13,6 @@ from src.db.models.gse import GSE
 from src.db.repositories.sqlalchemy_engine_helpers import create_sync_engine
 
 logger = logging.getLogger(__name__)
-MAX_PARALLEL_REQUESTS = 10
 
 
 class GSERepository(GSELoader):
@@ -24,13 +22,7 @@ class GSERepository(GSELoader):
         if not os.access(geometadb_path, os.W_OK):
             raise RuntimeError(f"Geometadb file {geometadb_path} is not writable")
         self.engine = create_sync_engine(geometadb_path)
-        self.async_engine = create_sync_engine(geometadb_path)
         self.geometadb_path = geometadb_path
-        self.semaphore = asyncio.Semaphore(MAX_PARALLEL_REQUESTS)
-
-        @event.listens_for(self.engine, "connect")
-        def set_sqlite_text_factory(dbapi_connection, connection_record):
-            dbapi_connection.text_factory = lambda x: x.decode(errors="replace")
 
     def save_gses(self, gses: List[GSE]) -> None:
         """
