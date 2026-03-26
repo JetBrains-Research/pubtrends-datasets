@@ -130,7 +130,7 @@ class GEOmetadbBackfiller:
             len(accessions_to_process),
             self.dataset_parser_workers,
         )
-
+        loop = asyncio.get_running_loop()
         with (ProcessPoolExecutor(self.big_dataset_parser_workers,
                                   initializer=configure_log_file) as big_dataset_executor,
               ProcessPoolExecutor(self.small_dataset_parser_workers,
@@ -139,11 +139,9 @@ class GEOmetadbBackfiller:
                     raise_for_status=True,
                     timeout=aiohttp.ClientTimeout(total=None, sock_connect=10, sock_read=10),
                     connector=aiohttp.TCPConnector(limit=self.config.max_ncbi_connections),
-            ) as session:
-                loop = asyncio.get_running_loop()
+            ) as session, GSEArchiveParser(loop, big_dataset_executor, small_dataset_executor, self.chunk_size,
+                                           self.big_gzip_threshold_mb) as parser:
                 downloader = GSEArchiveDownloader(self.config, session, dont_redownload)
-                parser = GSEArchiveParser(loop, big_dataset_executor, small_dataset_executor, self.chunk_size,
-                                          self.big_gzip_threshold_mb)
                 writer = DatasetWriter(
                     gse_repository=self.gse_repository,
                     gsm_repository=self.gsm_repository,

@@ -44,12 +44,31 @@ class GSEArchiveParser:
         self.size_threshold_mb = big_dataset_size_threshold_mb
         self.lock = asyncio.Lock()
         self.batch = []
-        self.flush_task = asyncio.create_task(_periodic_flush(self, 30))
+        self.flush_task = None
         self._background_tasks = []
         self.last_flush_time = time.time()
 
-    def stop_flushing_thread(self):
-        self.flush_task.cancel()
+    async def __aenter__(self) -> "GSEArchiveParser":
+        self.flush_task = asyncio.create_task(_periodic_flush(self, 30))
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        if self.flush_task is not None:
+            self.flush_task.cancel()
+            try:
+                await self.flush_task
+            except asyncio.CancelledError:
+                pass
+
+        async with self.lock:
+            batch = self.batch
+            self.batch = []
+
+        if batch:
+            await self._process_archive_batch(batch)
+
+        if self._background_tasks:
+            await asyncio.gather(*self._background_tasks, return_exceptions=True)
 
     async def flush(self) -> None:
         """
