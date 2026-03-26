@@ -21,22 +21,6 @@ This script will install the prerequisite packages using the [uv](https://github
 
 After the script finishes, please edit and copy the `config.properties` file to `~/.pubtrends-datasets/config.properties`.
 
-### Running the sentence-transformers service
-The app uses this service to generate text embeddings for the Relevant Datasets feature.
-
-#### Prerequisites for GPU Acceleration:
-To use the --gpu flag, you must have a CUDA-capable GPU and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) installed.
-
-#### Deployment steps:
-1. Build the sentence-transformers container: 
-```scripts/build_sentence_transformers_container.sh```
-2. Run the container: 
-```scripts/run_sentence_transformers_container.sh```
- 
-Once started, the `pubtrends-embeddings` container will be available on port 5001.
-
-## GEO dataset downloading and processing
-
 Use the geometadb backfilling tool to synchronize the database with currently available GEO datasets:
 ```aiignore
 # Backfill from March 6, 2024 (geometadb cutoff date), to the current date
