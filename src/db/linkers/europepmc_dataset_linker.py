@@ -30,7 +30,11 @@ class EuropePMCDatasetLinker(PaperDatasetLinker):
             all_accessions.extend(accessions)
 
         # Deduplicate and return
-        return list(set(all_accessions))
+        result = list(set(all_accessions))
+        assert all(gse_id.startswith("GSE") for gse_id in result), (
+            f"Expected all GEO IDs to start with 'GSE', but got: {result}"
+        )
+        return result
 
     def link_to_datasets_mapped(self, pubmed_ids: List[str]) -> Dict[str, List[str]]:
         """
@@ -59,7 +63,8 @@ class EuropePMCDatasetLinker(PaperDatasetLinker):
             # Merge batch results into overall result
             for pubmed_id, accessions in batch_mapping.items():
                 if pubmed_id in result:
-                    result[pubmed_id].extend(accessions)
+                    accessions_gse_only = filter(lambda acc: acc.startswith("GSE"), accessions)
+                    result[pubmed_id].extend(accessions_gse_only)
 
         # Deduplicate accessions for each PubMed ID
         for pubmed_id in result:
