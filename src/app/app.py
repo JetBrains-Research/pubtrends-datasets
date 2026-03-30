@@ -2,6 +2,7 @@
 import itertools
 import json
 from dataclasses import asdict
+from typing import List
 
 import requests
 from flasgger import Swagger
@@ -37,8 +38,15 @@ configure_log_file()
 
 logger = app.logger
 
+
 def log_request(r):
     return f'addr:{r.remote_addr} args:{json.dumps(r.args)}'
+
+
+def create_chained_linker(http_session):
+    europepmc_dataset_linker = EuropePMCDatasetLinker(http_session)
+    elink_dataset_linker = ELinkDatasetLinker(http_session)
+    return ChainedDatasetLinker(elink_dataset_linker, europepmc_dataset_linker)
 
 
 def _link_pubmed_to_gse(pubmed_ids: list[str], http_session) -> dict[str, list[str]]:
@@ -49,9 +57,7 @@ def _link_pubmed_to_gse(pubmed_ids: list[str], http_session) -> dict[str, list[s
     :param http_session: HTTP session to use for requests
     :return: Dictionary mapping PubMed IDs to GSE accessions
     """
-    europepmc_dataset_linker = EuropePMCDatasetLinker(http_session)
-    elink_dataset_linker = ELinkDatasetLinker(http_session)
-    dataset_linker = ChainedDatasetLinker(elink_dataset_linker, europepmc_dataset_linker)
+    dataset_linker = create_chained_linker(http_session)
 
     pubmed_to_gse = dataset_linker.link_to_datasets_mapped(pubmed_ids)
 
@@ -398,8 +404,8 @@ def get_relevant_datasets():
 
     try:
         with requests.Session() as http_session:
-            pmid_gse_mappings = _link_pubmed_to_gse(pubmed_ids, http_session)
-            gse_accessions = list(set(itertools.chain.from_iterable(pmid_gse_mappings.values())))
+            dataset_linker = create_chained_linker(http_session)
+            gse_accessions = dataset_linker.link_to_datasets(pubmed_ids)
             gses = _get_gse_details(gse_accessions, http_session)
             gse_gsm_map = gsm_repository.get_gsms_for_gse(gse_accessions)
         return jsonify(semantic_search.rank_by_relevance(gses, gse_gsm_map, query))
