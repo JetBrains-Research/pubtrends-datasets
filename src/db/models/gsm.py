@@ -1,5 +1,5 @@
 """Gene Expression Omnibus Sample (GSM) data model."""
-
+import io
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict
 
@@ -51,6 +51,21 @@ class GSM:
     data_row_count: Optional[float] = field(default=None, metadata={"sa": Column(REAL)})
     channel_count: Optional[float] = field(default=None, metadata={"sa": Column(REAL)})
 
+    def __str__(self):
+        lines = []
+        lines.append(f"Sample: {self.title}")
+        if self.source_name_ch1:
+            lines.append(f"Source: {self.source_name_ch1}")
+        if self.organism_ch1:
+            lines.append(f"Organism: {self.organism_ch1}")
+        if self.molecule_ch1:
+            lines.append(f"Molecule: {self.molecule_ch1}")
+        if self.characteristics_ch1:
+            lines.append(f"Characteristics:")
+            for characteristic, value in _parse_characteristics(self, self.characteristics_ch1.split(";")).items():
+                lines.append(f"{characteristic}: {value}")
+
+        return "\n".join(lines)
 
 def _parse_characteristics(self, characteristics: List[str]) -> Dict[str, str]:
     """

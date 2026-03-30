@@ -17,23 +17,12 @@ from src.db.loaders.chained_gse_loader import ChainedGSELoader
 from src.db.loaders.chained_gsm_loader import ChainedGSMLoader
 from src.db.loaders.ncbi_gse_loader import NCBIGSELoader
 from src.db.loaders.ncbi_gsm_loader import NCBIGSMLoader
+from src.db.models.gse import GSE
 from src.db.models.gse import GSE_DTO
 from src.db.models.gsm import GSM
-from src.db.models.gse import GSE
 from src.db.repositories.gse_repository import GSERepository
 from src.db.repositories.gsm_repository import GSMRepository
 from src.semantic_search.semantic_search import SemanticSearcher
-from src.db.loaders.chained_gse_loader import ChainedGSELoader
-from src.db.loaders.chained_gsm_loader import ChainedGSMLoader
-from src.db.linkers.elink_dataset_linker import ELinkDatasetLinker
-from src.db.linkers.europepmc_dataset_linker import EuropePMCDatasetLinker
-from src.db.models.gse import GSE_DTO
-from src.db.models.gsm import GSM
-from src.db.repositories.gse_repository import GSERepository
-from src.db.repositories.gsm_repository import GSMRepository
-from src.db.models.mapper_registry import mapper_registry
-from src.db.loaders.ncbi_gse_loader import NCBIGSELoader
-from src.db.loaders.ncbi_gsm_loader import NCBIGSMLoader
 
 app = Flask(__name__)
 swagger = Swagger(app, template=swagger_template)

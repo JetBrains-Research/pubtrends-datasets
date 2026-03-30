@@ -1,4 +1,5 @@
 import logging
+import time
 from collections import defaultdict
 from typing import List, Iterable, Dict
 
@@ -15,14 +16,16 @@ logger = logging.getLogger(__name__)
 
 NLP = spacy.load("en_core_web_sm")
 
+
 def is_float(string_val):
     try:
         float(string_val)
         return True
     except ValueError:
         return False
-    except TypeError: # Handles cases like None
+    except TypeError:  # Handles cases like None
         return False
+
 
 def cosine_similarity(vector, matrix):
     vector_norm = np.linalg.norm(vector)
@@ -51,8 +54,10 @@ def get_chunks(text, max_tokens_per_chunk=128, overlap_sentences=1):
         list: List of text chunks
     """
 
-    # Get all sentences
-    sentences = list(NLP(text).sents)
+    # Only select necessary pipeline components to speed up processing
+    with NLP.select_pipes(enable=['tok2vec', "parser", "senter"]):
+        # Get all sentences
+        sentences = list(NLP(text).sents)
 
     if not sentences:
         return [text]
@@ -103,49 +108,24 @@ class SemanticSearcher:
         if gse.overall_design:
             chunks.extend(get_chunks(gse.overall_design, self.max_tokens_per_chunk, self.overlap_sentences))
         if gsms:
-            sample_summary_chunks = get_chunks(
-                self.get_sample_summary(gsms),
-                self.max_tokens_per_chunk,
-                self.overlap_sentences,
+            chunks.extend(
+                chunk for gsm in gsms for chunk in get_chunks(str(gsm))
             )
-            chunks.extend(sample_summary_chunks)
         return chunks
 
-    @staticmethod
-    def is_all_numeric(values: str):
-        return  all(value.isnumeric() for value in values)
-
-    @staticmethod
-    def get_characteristics_summary(gsms: List[GSM]) -> str:
-        characteristics = defaultdict(list)
-        for gsm in gsms:
-            for characteristic, value in gsm.characteristics.items():
-                characteristics[characteristic].append(value)
-        sample_characteristics_summary = "Sample characteristics summary: \n"
-        for characteristic, values in characteristics.items():
-            if all(is_float(value) for value in values):
-                sample_characteristics_summary += f"{characteristic} range: {min(values)}-{max(values)};\n"
-            else:
-                values = list(set(values))
-                sample_characteristics_summary += f"{characteristic}: {', '.join(values[:10])};\n"
-
-
-        return sample_characteristics_summary
-
-    @staticmethod
-    def get_sample_summary(gsms: List[GSM]) -> str:
-        sample_summary = "Study sample summary\n"
-        organisms = {gsm.organism_ch1 for gsm in gsms}
-        sample_summary += f"{'Organism' if len(organisms) == 1 else 'Organisms'}: {', '.join(organisms)}\n"
-        sample_summary += f"Molecule: {gsms[0].molecule_ch1}\n"
-        sample_summary += SemanticSearcher.get_characteristics_summary(gsms)
-        return sample_summary
-
     def embed_gses(self, gses: List[GSE], gsms_for_gse: Dict[str, List[GSM]]) -> list[tuple[np.ndarray, GSE]]:
+        start = time.perf_counter()
         chunks_with_gse = [(chunk, gse) for gse in gses for chunk in self.chunk_gse(gse, gsms_for_gse[gse.gse])]
 
         chunks = [chunk for chunk, _ in chunks_with_gse]
+        end = time.perf_counter()
+        number_of_gsms = sum([len(gsms) for _, gsms in gsms_for_gse.items()])
+        logger.info(f"Chunks created in {end - start} seconds for {len(gses)} GSEs and {len(chunks)} chunks and {number_of_gsms} GSMs")
+
+        embedding_start_time = time.perf_counter()
         embeddings = fetch_texts_embedding(chunks, self.embeddings_service_url)
+        embedding_end_time = time.perf_counter()
+        logger.info(f"Embeddings fetched in {embedding_end_time - embedding_start_time} seconds for {len(chunks)} chunks")
 
         result = [(embedding, gse) for embedding, (_, gse) in zip(embeddings, chunks_with_gse)]
 
@@ -159,7 +139,8 @@ class SemanticSearcher:
         embeddings_with_gse = self.embed_gses(gses, gsms_for_gse)
         embeddings = np.array([embedding for embedding, _ in embeddings_with_gse])
         scores = cosine_similarity(query_embedding, embeddings)
-        scored_gses = [ScoredGSE(GSE_DTO(embeddings_with_gse[i][1]), scores[i]) for i in range(len(embeddings_with_gse))]
+        scored_gses = [ScoredGSE(GSE_DTO(embeddings_with_gse[i][1]), scores[i]) for i in
+                       range(len(embeddings_with_gse))]
 
         ranked_scored_gses = list(sorted(scored_gses, key=lambda x: x.score, reverse=True))
         return stable_deduplicate(ranked_scored_gses, lambda x: x.gse.gse)
