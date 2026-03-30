@@ -1,9 +1,13 @@
+import logging
 from typing import List, Dict
 import re
 import requests
+import tenacity
+
 from src.db.linkers.paper_dataset_linker import PaperDatasetLinker
 from src.exception.entrez_error import EntrezError
 
+logger = logging.getLogger(__name__)
 
 class ELinkDatasetLinker(PaperDatasetLinker):
     ELINK_REQUEST_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi"
@@ -12,6 +16,7 @@ class ELinkDatasetLinker(PaperDatasetLinker):
     def __init__(self, http_session: requests.Session):
         self.http_session = http_session
 
+    @tenacity.retry(wait=tenacity.wait_exponential(max=10), stop=tenacity.stop_after_attempt(3), reraise=True)
     def link_to_datasets(self, pubmed_ids: List[str]) -> List[str]:
         if not pubmed_ids:
             raise ValueError("At least one valid PubMed ID is required")
@@ -40,6 +45,7 @@ class ELinkDatasetLinker(PaperDatasetLinker):
                 result[pubmed_id] = accessions
             except Exception:
                 # If a single ID fails, store empty list and continue
+                logging.exception(f"Error linking PubMed ID {pubmed_id}")
                 result[pubmed_id] = []
 
         return result
