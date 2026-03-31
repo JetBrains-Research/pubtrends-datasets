@@ -23,6 +23,6 @@ class DatasetWriter:
         :return: Parsed dataset payload.
         """
         async with self._lock:
-            await asyncio.to_thread(self.gse_repository.save_gses_with_gsms([parsed_dataset.gse], parsed_dataset.gsms))
+            await asyncio.to_thread(self.gse_repository.save_gses_with_gsms, [parsed_dataset.gse], parsed_dataset.gsms)
 
         return parsed_dataset
