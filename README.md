@@ -14,7 +14,7 @@ Datasets integration for PubTrends
 
 To set up the project, run the `setup.sh` script:
 ```
-./scripts/setup.sh
+bash scripts/setup.sh
 ```
 
 This script will install the prerequisite packages using the [uv](https://github.com/astral-sh/uv) package manager and configure the project.
@@ -49,6 +49,7 @@ Positional arguments:
 Flags:
 - `--ignore-failures` - Continue processing even if dataset updates fail.
 - `--skip-existing` - Skip datasets already present in the local database
+- `--dont-redownload` - Prevents dataset archive files that were downloaded from being redownloaded. However, they will still be processed.
 
 To keep the database up to date, we suggest adding the following cron job via `crontab -e`:
 ```aiignore

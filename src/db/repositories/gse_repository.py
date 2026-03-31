@@ -4,18 +4,16 @@ import os
 import sqlite3
 from typing import List
 
-import sqlalchemy.exc
-from sqlalchemy import create_engine, event
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import Session, selectinload
 
-from src.db.models.gse import GSE
 from src.db.loaders.gse_loader import GSELoader
+from src.db.models import GSM, GSE_GSM
+from src.db.models.gse import GSE
+from src.db.repositories.sqlalchemy_engine_helpers import create_sync_engine
 
 logger = logging.getLogger(__name__)
-MAX_PARALLEL_REQUESTS = 10
 
 
 class GSERepository(GSELoader):
@@ -24,14 +22,8 @@ class GSERepository(GSELoader):
             raise RuntimeError(f"Geometadb file {geometadb_path} does not exist")
         if not os.access(geometadb_path, os.W_OK):
             raise RuntimeError(f"Geometadb file {geometadb_path} is not writable")
-        self.engine = create_engine(f"sqlite:///{geometadb_path}")
-        self.async_engine = create_async_engine(f"sqlite+aiosqlite:///{geometadb_path}")
+        self.engine = create_sync_engine(geometadb_path)
         self.geometadb_path = geometadb_path
-        self.semaphore = asyncio.Semaphore(MAX_PARALLEL_REQUESTS)
-
-        @event.listens_for(self.engine, "connect")
-        def set_sqlite_text_factory(dbapi_connection, connection_record):
-            dbapi_connection.text_factory = lambda x: x.decode(errors="replace")
 
     def save_gses(self, gses: List[GSE]) -> None:
         """
@@ -50,29 +42,22 @@ class GSERepository(GSELoader):
             logger.exception("Failed to save GEO datasets to geometadb:")
             raise
 
-    async def save_gses_async(self, gses: List[GSE]) -> None:
-        if not gses:
+    def save_gses_with_gsms(self, gses: List[GSE], gsms: List[GSM]):
+        if not gses or not gsms:
             return
-
         try:
-            async with AsyncSession(self.async_engine) as session:
+            gse_gsm_links = [GSE_GSM(gsm.series_id, gsm.gsm) for gsm in gsms]
+            with Session(self.engine) as session:
                 for gse in gses:
-                    await session.merge(gse)
-                await session.commit()
-        except sqlalchemy.exc.SQLAlchemyError as e:
-            # Just log the exception so as not to fail the whole pipeline.
+                    session.merge(gse)
+                for gsm in gsms:
+                    session.merge(gsm)
+                for link in gse_gsm_links:
+                    session.merge(link)
+                session.commit()
+        except SQLAlchemyError:
             logger.exception("Failed to save GEO datasets to geometadb:")
-            raise e
-
-    @staticmethod
-    async def executemany_with_retry(cursor, query, args):
-        for _ in range(3):
-            try:
-                await cursor.executemany(query, args)
-                return
-            except sqlite3.OperationalError:
-                pass
-        await cursor.executemany(query, args)
+            raise
 
     def get_gses(self, gse_accessions: List[str]) -> List[GSE]:
         """
@@ -96,24 +81,3 @@ class GSERepository(GSELoader):
         except SQLAlchemyError as e:
             logger.exception("Failed to load GEO datasets from geometadb:")
             raise e
-
-    async def get_gses_async(self, gse_accessions: List[str]) -> List[GSE]:
-        """
-        Loads GEO datasets from the geometadb sqlite database.
-
-        :param gse_accessions: List of GEO accessions for the datasets.
-        :return: List of GEO datasets
-        """
-        if not gse_accessions:
-            return []
-        try:
-            async with self.semaphore:
-                async with AsyncSession(self.async_engine) as session:
-                    statement = (
-                        select(GSE)
-                        .where(GSE.gse.in_(gse_accessions))
-                    )
-                    return list((await session.scalars(statement)).all())
-        except SQLAlchemyError:
-            logger.exception("Failed to load GEO datasets from geometadb:")
-            return []

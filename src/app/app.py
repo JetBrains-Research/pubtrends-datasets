@@ -5,6 +5,7 @@ from dataclasses import asdict
 import requests
 from flasgger import Swagger
 from flask import Flask, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
 
 from src.app.swagger_template import swagger_template
 from src.config.config import Config
@@ -16,8 +17,8 @@ from src.db.loaders.chained_gse_loader import ChainedGSELoader
 from src.db.loaders.chained_gsm_loader import ChainedGSMLoader
 from src.db.loaders.ncbi_gse_loader import NCBIGSELoader
 from src.db.loaders.ncbi_gsm_loader import NCBIGSMLoader
-from src.db.models.gse import GSE
-from src.db.models.gse import GSE_DTO
+from src.db.models import mapper_registry
+from src.db.models.gse import GSE_DTO, GSE
 from src.db.models.gsm import GSM
 from src.db.repositories.gse_repository import GSERepository
 from src.db.repositories.gsm_repository import GSMRepository
@@ -28,6 +29,9 @@ app = Flask(__name__)
 swagger = Swagger(app, template=swagger_template)
 CONFIG = Config(test=False)
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{CONFIG.geometadb_path}"
+
+db = SQLAlchemy(metadata=mapper_registry.metadata)
+db.init_app(app)
 
 gse_repository = GSERepository(CONFIG.geometadb_path)
 gsm_repository = GSMRepository(CONFIG.geometadb_path)
