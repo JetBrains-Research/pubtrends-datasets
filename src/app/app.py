@@ -384,8 +384,31 @@ def get_relevant_datasets():
               score: 0.7031
       400:
         description: Bad request - missing or invalid inputs
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+        examples:
+          application/json:
+            error: "pubmed_ids must be a non-empty list"
+      503:
+        description: Service Unavailable - sentence-transformer server is not available
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+        examples:
+          application/json:
+            error: "Sentence-transformer server is not available at http://localhost:8080. Please ensure the embeddings service is running."
       500:
         description: Internal server error
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
     """
     logger.info(f'/relevant_datasets {log_request(request)}')
     payload = request.get_json(silent=True) or {}
