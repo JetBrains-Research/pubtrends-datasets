@@ -50,7 +50,7 @@ class GEOmetadbBackfiller:
         self.gse_repository = gse_repository
         self.gsm_repository = gsm_repository
         self.show_progress = config.show_backfill_progress
-        self.chunk_size = config.chunk_size
+        self.archive_parser_chunk_size = config.archive_parser_chunk_size
         self.big_gzip_threshold_mb = config.big_gzip_threshold_mb
         self.small_dataset_parser_workers = config.small_dataset_parser_workers
         self.big_dataset_parser_workers = config.big_dataset_parser_workers
@@ -139,7 +139,7 @@ class GEOmetadbBackfiller:
                     raise_for_status=True,
                     timeout=aiohttp.ClientTimeout(total=None, sock_connect=10, sock_read=10),
                     connector=aiohttp.TCPConnector(limit=self.config.max_ncbi_connections),
-            ) as session, GSEArchiveParser(loop, big_dataset_executor, small_dataset_executor, self.chunk_size,
+            ) as session, GSEArchiveParser(loop, big_dataset_executor, small_dataset_executor, self.archive_parser_chunk_size,
                                            self.big_gzip_threshold_mb) as parser:
                 downloader = GSEArchiveDownloader(self.config, session, dont_redownload)
                 writer = DatasetWriter(
