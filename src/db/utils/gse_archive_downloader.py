@@ -83,10 +83,3 @@ class GSEArchiveDownloader:
             f"/geo/series/{gse_accession[:-3]}nnn/{gse_accession}/soft/"
             f"{gse_accession}_family.soft.gz"
         )
-
-    @staticmethod
-    def get_ftp_path(gse_accession: str) -> str:
-        return (
-            f"/geo/series/{gse_accession[:-3]}nnn/{gse_accession}/soft/"
-            f"{gse_accession}_family.soft.gz"
-        )
