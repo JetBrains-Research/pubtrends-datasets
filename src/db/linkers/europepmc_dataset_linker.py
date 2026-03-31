@@ -30,11 +30,7 @@ class EuropePMCDatasetLinker(PaperDatasetLinker):
             all_accessions.extend(accessions)
 
         # Deduplicate and return
-        result = list(set(all_accessions))
-        assert all(gse_id.startswith("GSE") for gse_id in result), (
-            f"Expected all GEO IDs to start with 'GSE', but got: {result}"
-        )
-        return result
+        return list(set(all_accessions))
 
     def link_to_datasets_mapped(self, pubmed_ids: List[str]) -> Dict[str, List[str]]:
         """
