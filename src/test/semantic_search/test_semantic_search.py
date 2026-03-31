@@ -148,8 +148,8 @@ class TestSemanticSearch(unittest.TestCase):
 
     @parameterized.expand([
         ("mouse brain", {"mouse brain": [1, 1], "alzheimer's": [1, 2]},
-         [ScoredGSE(GSEs_TO_SEARCH[2], 1.0), ScoredGSE(GSEs_TO_SEARCH[1], 3 / sqrt(2) / sqrt(5)),
-          ScoredGSE(GSEs_TO_SEARCH[0], 0.0)])
+         [ScoredGSE(GSEs_TO_SEARCH[2].gse, 1.0), ScoredGSE(GSEs_TO_SEARCH[1].gse, 3 / sqrt(2) / sqrt(5)),
+          ScoredGSE(GSEs_TO_SEARCH[0].gse, 0.0)])
     ])
     def test_rank_by_relevance(self, query: str, embeddings_if_word_present: Dict[str, List[float]],
                                expected_result: List[GSE]):
@@ -159,7 +159,7 @@ class TestSemanticSearch(unittest.TestCase):
         # Once for the query and another time for GSEs
         self.assertGreaterEqual(self.fetch_texts_embedding.call_count, 2)
         for i, scored_gse in enumerate(result):
-            self.assertEqual(scored_gse.gse, expected_result[i].gse.gse)
+            self.assertEqual(scored_gse.gse_accession, expected_result[i].gse_accession)
             self.assertAlmostEqual(scored_gse.score, expected_result[i].score)
 
     def test_rank_by_relevance_empty_input(self):
