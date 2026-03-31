@@ -429,7 +429,7 @@ def get_relevant_datasets():
             dataset_linker = create_chained_linker(http_session)
             gse_accessions = dataset_linker.link_to_datasets(pubmed_ids)
             gses = _get_gse_details(gse_accessions, http_session)
-            gse_gsm_map = gsm_repository.get_gsms_for_gse(gse_accessions)
+            gse_gsm_map = gsm_repository.get_gse_gsm_mapping(gse_accessions)
         scored_gses = semantic_search.rank_by_relevance(gses, gse_gsm_map, query)
         result = [{"dataset_id": scored_gse.gse.gse, "score": scored_gse.score} for scored_gse in scored_gses]
         return jsonify(result)

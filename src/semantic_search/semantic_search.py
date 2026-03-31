@@ -90,17 +90,21 @@ class SemanticSearcher:
         self.embeddings_service_url = config.embeddings_service_url
         self.chunking_workers = config.chunking_workers
 
+    def _get_chunks(self, text: str) -> List[str]:
+        return get_chunks(text, self.max_tokens_per_chunk, self.overlap_sentences)
+
+
     def chunk_gse(self, gse: GSE, gsms: List[GSM]) -> List[str]:
         chunks = [gse.title]
         if gse.is_superseries():
             return chunks
         if gse.summary:
-            chunks.extend(get_chunks(gse.summary, self.max_tokens_per_chunk, self.overlap_sentences))
+            chunks.extend(self._get_chunks(gse.summary))
         if gse.overall_design:
-            chunks.extend(get_chunks(gse.overall_design, self.max_tokens_per_chunk, self.overlap_sentences))
+            chunks.extend(self._get_chunks(gse.overall_design))
         if gsms:
             chunks.extend(
-                chunk for gsm in gsms for chunk in get_chunks(str(gsm))
+                chunk for gsm in gsms for chunk in self._get_chunks(str(gsm))
             )
         return chunks
 

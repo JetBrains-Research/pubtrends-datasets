@@ -62,12 +62,12 @@ class GSM:
             lines.append(f"Molecule: {self.molecule_ch1}")
         if self.characteristics_ch1:
             lines.append(f"Characteristics:")
-            for characteristic, value in _parse_characteristics(self, self.characteristics_ch1.split(";")).items():
+            for characteristic, value in _parse_characteristics(self.characteristics_ch1.split(";")).items():
                 lines.append(f"{characteristic}: {value}")
 
         return "\n".join(lines)
 
-def _parse_characteristics(self, characteristics: List[str]) -> Dict[str, str]:
+def _parse_characteristics(characteristics: List[str]) -> Dict[str, str]:
     """
     Parses the characterstics key value pairs and stores them in a
     dictionary.

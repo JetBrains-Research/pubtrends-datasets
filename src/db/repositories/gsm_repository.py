@@ -60,7 +60,10 @@ class GSMRepository(GSMLoader):
             logger.exception("Failed to load GEO samples from geometadb:")
             raise e
 
-    def get_gsms_for_gse(self, gse_accesions: List[str]) -> Dict[str, List[GSM]]:
+    def get_gse_gsm_mapping(self, gse_accesions: List[str]) -> Dict[str, List[GSM]]:
+        """
+        Returns a mapping of GSE accessions to their associated GSM samples.
+        """
         if not gse_accesions:
             return {}
 
