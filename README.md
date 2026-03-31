@@ -14,7 +14,7 @@ Datasets integration for PubTrends
 
 To set up the project, run the `setup.sh` script:
 ```
-./scripts/setup.sh
+bash scripts/setup.sh
 ```
 
 This script will install the prerequisite packages using the [uv](https://github.com/astral-sh/uv) package manager and configure the project.

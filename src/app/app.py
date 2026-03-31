@@ -16,7 +16,7 @@ from src.db.loaders.chained_gse_loader import ChainedGSELoader
 from src.db.loaders.chained_gsm_loader import ChainedGSMLoader
 from src.db.linkers.elink_dataset_linker import ELinkDatasetLinker
 from src.db.linkers.europepmc_dataset_linker import EuropePMCDatasetLinker
-from src.db.models.gse import GSE_DTO
+from src.db.models.gse import GSE_DTO, GSE
 from src.db.models.gsm import GSM
 from src.db.repositories.gse_repository import GSERepository
 from src.db.repositories.gsm_repository import GSMRepository
