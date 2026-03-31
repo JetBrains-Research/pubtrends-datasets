@@ -142,4 +142,4 @@ class SemanticSearcher:
         ]
 
         ranked_scored_gses = sorted(scored_gses, key=lambda x: x.score, reverse=True)
-        return stable_deduplicate(ranked_scored_gses, lambda x: x.gse.gse)
+        return stable_deduplicate(ranked_scored_gses, lambda x: x.gse_accession)
