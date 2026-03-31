@@ -18,13 +18,11 @@ logger = logging.getLogger(__name__)
 class NCBIGSELoader(GSELoader):
     DOWNLOAD_URL_TEMPLATE = "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={}&targ=self&form=text&view=quick"
 
-    def __init__(self, session: requests.Session, repository: GSERepository) -> None:
+    def __init__(self, session: requests.Session) -> None:
         self.session = session
-        self.repository = repository
 
     def get_gses(self, gse_accessions: List[str]) -> List[GSE]:
         gses = [self.download_geo_dataset(accession) for accession in gse_accessions]
-        self.repository.save_gses(gses)
         return gses
 
     @tenacity.retry(wait=tenacity.wait_exponential(max=10), stop=tenacity.stop_after_attempt(3), before_sleep=tenacity.before_sleep_log(logger, logging.WARNING), reraise=True)

@@ -84,7 +84,7 @@ def _get_gse_details(gse_accessions: list[str], http_session) -> list[GSE]:
     chained_loader = ChainedGSELoader(
         gse_repository,
         GEOmetadbBackfillerGSELoader(CONFIG, gse_repository, gsm_repository),
-        NCBIGSELoader(http_session, gse_repository)
+        NCBIGSELoader(http_session)
     )
     return chained_loader.get_gses(gse_accessions)
 
