@@ -41,7 +41,7 @@ class GSEArchiveParser:
         self.big_dataset_executor = big_dataset_executor
         self.small_dataset_executor = small_dataset_executor
         self.chunk_size = chunk_size
-        self.size_threshold_mb = big_dataset_size_threshold_mb
+        self.big_dataset_size_threshold_mb = big_dataset_size_threshold_mb
         self.lock = asyncio.Lock()
         self.batch = []
         self.flush_task = None
@@ -125,7 +125,7 @@ class GSEArchiveParser:
         :return: Parsed dataset containing information extracted from the archive.
         """
         size_mb = os.path.getsize(archive.archive_path) / (1024 * 1024)
-        if size_mb > self.size_threshold_mb:
+        if size_mb > self.big_dataset_size_threshold_mb:
             gse, gsms = await self.loop.run_in_executor(
                 self.big_dataset_executor,
                 GSEArchiveParser._parse_archive,
