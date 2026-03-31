@@ -363,24 +363,24 @@ def get_relevant_datasets():
             query: "mouse brain"
     responses:
       200:
-        description: Successful response with list of scored GSE datasets
+        description: Successful response with list of dataset IDs and relevance scores
         schema:
           type: array
           items:
-            $ref: '#/definitions/ScoredGSE'
+            type: object
+            properties:
+              dataset_id:
+                type: string
+                description: GSE accession number
+              score:
+                type: number
+                format: float
+                description: Relevance score (cosine similarity)
         examples:
           application/json:
-            - gse:
-                gse: "GSE137444"
-                title: "Stem cell derived human microglia transplanted in mouse brain to study human disease"
-                pubmed_id: 31659342
-                summary: "While genetics highlight the role of microglia in Alzheimer's disease..."
+            - dataset_id: "GSE137444"
               score: 0.8123
-            - gse:
-                gse: "GSE127884"
-                title: "The major risk factors for Alzheimer's disease..."
-                pubmed_id: 31018141
-                summary: "Microglia are involved in Alzheimer's disease (AD)..."
+            - dataset_id: "GSE127884"
               score: 0.7031
       400:
         description: Bad request - missing or invalid inputs
@@ -430,7 +430,9 @@ def get_relevant_datasets():
             gse_accessions = dataset_linker.link_to_datasets(pubmed_ids)
             gses = _get_gse_details(gse_accessions, http_session)
             gse_gsm_map = gsm_repository.get_gsms_for_gse(gse_accessions)
-        return jsonify(semantic_search.rank_by_relevance(gses, gse_gsm_map, query))
+        scored_gses = semantic_search.rank_by_relevance(gses, gse_gsm_map, query)
+        result = [{"dataset_id": scored_gse.gse.gse, "score": scored_gse.score} for scored_gse in scored_gses]
+        return jsonify(result)
     except EmbeddingsServiceError as e:
         logger.error(f'/relevant_datasets embeddings service error: {e}')
         return jsonify({"error": str(e)}), 503
