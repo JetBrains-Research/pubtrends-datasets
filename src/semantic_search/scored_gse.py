@@ -1,9 +1,7 @@
 from dataclasses import dataclass
 
-from src.db.models import GSE_DTO
-
 
 @dataclass
 class ScoredGSE:
-    gse: GSE_DTO
+    gse_accession: str
     score: float

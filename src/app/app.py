@@ -373,7 +373,7 @@ def get_relevant_datasets():
           items:
             type: object
             properties:
-              dataset_id:
+              gse_accession:
                 type: string
                 description: GSE accession number
               score:
@@ -434,9 +434,7 @@ def get_relevant_datasets():
             gse_accessions = dataset_linker.link_to_datasets(pubmed_ids)
             gses = _get_gse_details(gse_accessions, http_session)
             gse_gsm_map = gsm_repository.get_gse_gsm_mapping(gse_accessions)
-        scored_gses = semantic_search.rank_by_relevance(gses, gse_gsm_map, query)
-        result = [{"dataset_id": scored_gse.gse.gse, "score": scored_gse.score} for scored_gse in scored_gses]
-        return jsonify(result)
+        return jsonify(semantic_search.rank_by_relevance(gses, gse_gsm_map, query))
     except EmbeddingsServiceError as e:
         logger.error(f'/relevant_datasets embeddings service error: {e}')
         return jsonify({"error": str(e)}), 503

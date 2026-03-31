@@ -137,7 +137,7 @@ class SemanticSearcher:
         embeddings = np.array([embedding for embedding, _ in embeddings_with_gse])
         scores = cosine_similarity(query_embedding, embeddings)
         scored_gses = [
-            ScoredGSE(GSE_DTO(gse), score)
+            ScoredGSE(gse.gse, score)
             for (_, gse), score in zip(embeddings_with_gse, scores)
         ]
 
