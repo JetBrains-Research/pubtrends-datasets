@@ -21,6 +21,7 @@ from src.db.models.gse import GSE_DTO
 from src.db.models.gsm import GSM
 from src.db.repositories.gse_repository import GSERepository
 from src.db.repositories.gsm_repository import GSMRepository
+from src.semantic_search.embeddings_service import EmbeddingsServiceError
 from src.semantic_search.semantic_search import SemanticSearcher
 
 app = Flask(__name__)
@@ -407,6 +408,9 @@ def get_relevant_datasets():
             gses = _get_gse_details(gse_accessions, http_session)
             gse_gsm_map = gsm_repository.get_gsms_for_gse(gse_accessions)
         return jsonify(semantic_search.rank_by_relevance(gses, gse_gsm_map, query))
+    except EmbeddingsServiceError as e:
+        logger.error(f'/relevant_datasets embeddings service error: {e}')
+        return jsonify({"error": str(e)}), 503
     except Exception as e:
         logger.exception(f'/relevant_datasets exception {e}')
         return jsonify({"error": str(e)}), 500
