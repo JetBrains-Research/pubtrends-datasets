@@ -6,7 +6,7 @@ import tenacity
 
 logger = logging.getLogger(__name__)
 
-@tenacity.retry(wait=tenacity.wait_exponential(max=10), stop=tenacity.stop_after_attempt(3))
+@tenacity.retry(wait=tenacity.wait_exponential(max=10), stop=tenacity.stop_after_attempt(3), before_sleep=tenacity.before_sleep_log(logger, logging.WARNING), reraise=True)
 def fetch_texts_embedding_batch(texts, embeddings_service_url):
     logger.debug('Fetch texts embeddings')
     try:

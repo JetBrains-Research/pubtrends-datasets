@@ -16,7 +16,7 @@ class ELinkDatasetLinker(PaperDatasetLinker):
     def __init__(self, http_session: requests.Session):
         self.http_session = http_session
 
-    @tenacity.retry(wait=tenacity.wait_exponential(max=10), stop=tenacity.stop_after_attempt(3), reraise=True)
+    @tenacity.retry(wait=tenacity.wait_exponential(max=10), stop=tenacity.stop_after_attempt(3), before_sleep=tenacity.before_sleep_log(logger, logging.WARNING), reraise=True)
     def link_to_datasets(self, pubmed_ids: List[str]) -> List[str]:
         if not pubmed_ids:
             raise ValueError("At least one valid PubMed ID is required")
