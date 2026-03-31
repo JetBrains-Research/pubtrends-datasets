@@ -1,8 +1,6 @@
 """Flask application for GEOmetadb dataset queries."""
-import itertools
 import json
 from dataclasses import asdict
-from typing import List
 
 import requests
 from flasgger import Swagger

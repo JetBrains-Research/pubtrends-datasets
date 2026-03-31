@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, ANY
 
 import requests
 
@@ -47,6 +47,19 @@ class TestELinkDatasetLinker(unittest.TestCase):
         self.mock_session = Mock()
 
         self.linker = ELinkDatasetLinker(http_session=self.mock_session)
+        self.post_kwargs = {"params": ANY, "data": ANY}
+
+    def assert_elink_called(self):
+        self.mock_session.post.assert_any_call(
+            ELinkDatasetLinker.ELINK_REQUEST_URL,
+            **self.post_kwargs
+        )
+
+    def assert_efetch_called(self):
+        self.mock_session.post.assert_any_call(
+            ELinkDatasetLinker.EFETCH_REQUEST_URL,
+            **self.post_kwargs
+        )
 
     def test_fetch_geo_ids_success(self):
         self.mock_session.post.return_value = self.mock_elink_response
@@ -59,7 +72,7 @@ class TestELinkDatasetLinker(unittest.TestCase):
         self.assertListEqual(result, expected_result)
 
     def test_fetch_geo_accessions_success(self):
-        self.mock_session.get.return_value = self.mock_efetch_response
+        self.mock_session.post.return_value = self.mock_efetch_response
 
         pubmed_ids = ["112233"]
         result = self.linker._fetch_geo_accessions(pubmed_ids)
@@ -69,8 +82,9 @@ class TestELinkDatasetLinker(unittest.TestCase):
         self.assertListEqual(result, expected_result)
 
     def test_link_papers_to_datasets_success(self):
-        self.mock_session.post.return_value = self.mock_elink_response
-        self.mock_session.get.return_value = self.mock_efetch_response
+        self.mock_session.post.side_effect = lambda *args, **kwargs: self.mock_elink_response \
+            if args[0] == ELinkDatasetLinker.ELINK_REQUEST_URL \
+            else self.mock_efetch_response
 
         pubmed_ids = ["112233"]
         result = self.linker.link_to_datasets(pubmed_ids)
@@ -78,36 +92,41 @@ class TestELinkDatasetLinker(unittest.TestCase):
         expected_result = ["GSE12345", "GSE54321"]
 
         self.assertListEqual(result, expected_result)
+        self.assert_elink_called()
+        self.assert_efetch_called()
 
     def test_link_papers_to_datasets_elink_server_error(self):
-        self.mock_session.post.return_value = self.mock_fail_response
+        self.mock_session.post.side_effect = lambda *args, **kwargs: self.mock_fail_response \
+            if args[0] == ELinkDatasetLinker.ELINK_REQUEST_URL \
+            else self.mock_efetch_response
         self.assertRaises(EntrezError, self.linker.link_to_datasets, ["112233"])
-        self.mock_session.post.assert_called_once()
-        self.mock_session.get.assert_not_called()
+        self.assert_elink_called()
 
     def test_link_papers_to_datasets_efetch_server_error(self):
-        self.mock_session.post.return_value = self.mock_elink_response
-        self.mock_session.get.return_value = self.mock_fail_response
+        self.mock_session.post.side_effect = lambda *args, **kwargs: self.mock_elink_response \
+            if args[0] == ELinkDatasetLinker.ELINK_REQUEST_URL \
+            else self.mock_fail_response
 
         self.assertRaises(EntrezError, self.linker.link_to_datasets, ["112233"])
-        self.mock_session.post.assert_called_once()
-        self.mock_session.get.assert_called_once()
+        self.assert_elink_called()
+        self.assert_efetch_called()
 
     def test_link_papers_to_datasets_elink_network_failure(self):
         self.mock_session.post.side_effect = requests.RequestException
         self.assertRaises(EntrezError, self.linker.link_to_datasets, ["112233"])
-        self.mock_session.post.assert_called_once()
-        self.mock_session.get.assert_not_called()
+        self.assert_elink_called()
 
     def test_link_papers_to_datasets_efetch_network_failure(self):
-        self.mock_session.post.return_value = self.mock_elink_response
-        self.mock_session.get.side_effect = requests.RequestException
+        def post_side_effect(url, *args, **kwargs):
+            if url == ELinkDatasetLinker.ELINK_REQUEST_URL:
+                return self.mock_elink_response
+            raise requests.RequestException
+        self.mock_session.post.side_effect = post_side_effect
 
         self.assertRaises(EntrezError, self.linker.link_to_datasets, ["112233"])
-        self.mock_session.post.assert_called_once()
-        self.mock_session.get.assert_called_once()
+        self.assert_elink_called()
+        self.assert_efetch_called()
 
     def test_link_papers_to_datasets_empty_input(self):
         self.assertRaises(ValueError, self.linker.link_to_datasets, [])
         self.mock_session.post.assert_not_called()
-        self.mock_session.get.assert_not_called()
