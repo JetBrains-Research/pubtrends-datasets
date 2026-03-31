@@ -168,8 +168,6 @@ if __name__ == "__main__":
     import argparse
 
     configure_log_file()
-    from src.db.repositories.gse_repository import GSERepository
-    from src.db.repositories.gsm_repository import GSMRepository
 
     parser = argparse.ArgumentParser(
         prog="GEOmetadb backfiller",
