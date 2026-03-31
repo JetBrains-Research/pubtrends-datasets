@@ -2,7 +2,7 @@ import asyncio
 import datetime
 import logging
 from concurrent.futures import ProcessPoolExecutor
-from typing import List
+from typing import List, Iterable
 
 import aiohttp
 
@@ -108,7 +108,7 @@ class GEOmetadbBackfiller:
 
     async def download_datasets(
             self,
-            gse_accessions: list[str],
+            gse_accessions: Iterable[str],
             skip_existing: bool = True,
             ignore_failures: bool = False,
             dont_redownload: bool = False,

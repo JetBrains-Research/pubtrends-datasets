@@ -13,6 +13,7 @@ from src.config.configure_log_file import configure_log_file
 from src.db.linkers.chained_dataset_linker import ChainedDatasetLinker
 from src.db.linkers.elink_dataset_linker import ELinkDatasetLinker
 from src.db.linkers.europepmc_dataset_linker import EuropePMCDatasetLinker
+from src.db.loaders.GEOmetadbBackfillerGSELoader import GEOmetadbBackfillerGSELoader
 from src.db.loaders.chained_gse_loader import ChainedGSELoader
 from src.db.loaders.chained_gsm_loader import ChainedGSMLoader
 from src.db.loaders.ncbi_gse_loader import NCBIGSELoader
@@ -82,6 +83,7 @@ def _get_gse_details(gse_accessions: list[str], http_session) -> list[GSE]:
     """
     chained_loader = ChainedGSELoader(
         gse_repository,
+        GEOmetadbBackfillerGSELoader(CONFIG, gse_repository, gsm_repository),
         NCBIGSELoader(http_session, gse_repository)
     )
     return chained_loader.get_gses(gse_accessions)
