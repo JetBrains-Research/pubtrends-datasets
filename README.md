@@ -14,7 +14,7 @@ Datasets integration for PubTrends
 
 To set up the project, run the `setup.sh` script:
 ```
-bash scripts/setup.sh
+scripts/setup.sh
 ```
 
 This script will install the prerequisite packages using the [uv](https://github.com/astral-sh/uv) package manager and configure the project.
@@ -40,7 +40,7 @@ Once started, the `pubtrends-embeddings` container will be available on port 500
 Use the geometadb backfilling tool to synchronize the database with currently available GEO datasets:
 ```aiignore
 # Backfill from March 6, 2024 (geometadb cutoff date), to the current date
-uv run python -m src.db.backfill_geometadb 2024-03-06 --ignore-failures
+uv run python -m src.db.utils.backfill_geometadb 2024-03-06 --ignore-failures
 ```
 Positional arguments:
 - `start_date` - Start of the date range for which to download datasets
@@ -48,23 +48,26 @@ Positional arguments:
  
 Flags:
 - `--ignore-failures` - Continue processing even if dataset updates fail.
-- `--skip-existing` - Skip datasets already present in the local database
+- `--skip-existing` - Skip datasets already present in the local database (default behavior is to process them)
 - `--dont-redownload` - Prevents dataset archive files that were downloaded from being redownloaded. However, they will still be processed.
 
 To keep the database up to date, we suggest adding the following cron job via `crontab -e`:
 ```aiignore
-0 23 * * * cd <path to this repository> && /home/<username>/.local/bin/uv --project run python -m src.db.backfill_geometadb --ignore-failures $(date -d "now-2 days" "+\%Y-\%m-\%d")
+0 23 * * * cd <path to this repository> && /home/<username>/.local/bin/uv run python -m src.db.utils.backfill_geometadb --ignore-failures $(date -d "now-2 days" "+\%Y-\%m-\%d")
 ```
 >[!NOTE]
 > It seems that GEO datasets published within the last 24 hours are not indexed by ESearch. As a result, these datasets cannot be downloaded using the backfilling tool.
 
 ### Configuration
 Tweak these properties in `config.properties` to optimize performance on your hardware:
-  - `max_ncbi_connections` - Maximum concurrent connections to NCBI's FTP server
-  - `dataset_parser_workers` - Number of parallel worker processes for parsing
+  - `max_ncbi_connections` - Maximum concurrent connections to NCBI's GEO download host
+  - `big_gzip_threshold_mb` - Threshold for determining whether a dataset is large (larger than this size in MB)
+  - `big_dataset_parser_workers` - Number of parallel worker processes for parsing large datasets.
+  - `small_dataset_parser_workers` - Number of parallel worker processes for parsing small datasets.
+  - `archive_parser_chunk_size ` - The number of small datasets to process at a time in a single worker process.
 
 >[!WARNING]
-> RAM Management: `High dataset_parser_workers` counts can lead to RAM exhaustion when parsing large files. It is recommended to start with one or two workers and monitor usage before scaling up.
+> RAM Management: `High big_dataset_parser_workers` counts can lead to RAM exhaustion when parsing large files. It is recommended to start with one or two workers and monitor usage before scaling up.
  
 To customize the backfilling process, change these properties:
   - `dataset_download_folder` - Path for storing downloaded datasets
