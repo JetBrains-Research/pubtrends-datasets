@@ -27,7 +27,6 @@ class Config:
         self.geometadb_path = os.path.expanduser(self.geometadb_path)
 
         self.max_ncbi_connections = self._parse_positive_int(params, 'max_ncbi_connections')
-        self.dataset_parser_workers = self._parse_positive_int(params, 'dataset_parser_workers')
 
         self.dataset_download_folder = params['dataset_download_folder']
         self.dataset_download_folder = os.path.expanduser(self.dataset_download_folder)

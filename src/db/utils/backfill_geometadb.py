@@ -46,7 +46,6 @@ class GEOmetadbBackfiller:
             gsm_repository: GSMRepository,
     ) -> None:
         self.config = config
-        self.dataset_parser_workers = config.dataset_parser_workers
         self.gse_repository = gse_repository
         self.gsm_repository = gsm_repository
         self.show_progress = config.show_backfill_progress
@@ -126,9 +125,10 @@ class GEOmetadbBackfiller:
             return []
 
         logger.info(
-            "Downloading %d datasets using %d parser workers",
+            "Downloading %d datasets using %d big dataset parser workers and %d small dataset parser workers",
             len(accessions_to_process),
-            self.dataset_parser_workers,
+            self.big_dataset_parser_workers,
+            self.small_dataset_parser_workers,
         )
         loop = asyncio.get_running_loop()
         with (ProcessPoolExecutor(self.big_dataset_parser_workers,
