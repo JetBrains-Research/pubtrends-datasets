@@ -21,6 +21,8 @@ This script will install the prerequisite packages using the [uv](https://github
 
 After the script finishes, please edit and copy the `config.properties` file to `~/.pubtrends-datasets/config.properties`.
 
+## GEO Dataset Downloading and Processing
+
 Use the geometadb backfilling tool to synchronize the database with currently available GEO datasets:
 ```aiignore
 # Backfill from March 6, 2024 (geometadb cutoff date), to the current date
