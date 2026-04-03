@@ -12,6 +12,7 @@ from flask_sqlalchemy import SQLAlchemy
 from src.app.swagger_template import swagger_template
 from src.config.config import Config
 from src.config.configure_log_file import configure_log_file
+from src.geofinder.geofinder_client import GeoFinderClient
 from src.db.linkers.chained_dataset_linker import ChainedDatasetLinker
 from src.db.loaders.chained_gse_loader import ChainedGSELoader
 from src.db.loaders.chained_gsm_loader import ChainedGSMLoader
@@ -321,6 +322,89 @@ def get_gsm_details():
 
     except Exception as e:
         logger.exception(f'/gsm-details exception {e}')
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/similar_datasets', methods=['POST'])
+def get_similar_datasets():
+    """
+    POST endpoint to retrieve similar GEO datasets for a list of GSE IDs.
+    ---
+    summary: Get similar GEO datasets for GSE IDs
+    description: |
+      Returns a list of GSE IDs that are similar to the provided input GSE IDs,
+      fetched from the GEO Finder service. Up to 100 results can be returned.
+    parameters:
+      - name: body
+        in: body
+        required: true
+        description: JSON object with GSE IDs and result count
+        schema:
+          type: object
+          required:
+            - gse_ids
+            - count
+          properties:
+            gse_ids:
+              type: array
+              items:
+                type: string
+            count:
+              type: integer
+              minimum: 1
+              maximum: 100
+          example:
+            gse_ids: ["GSE203024", "GSE116672"]
+            count: 10
+    responses:
+      200:
+        description: Successful response with list of similar GSE IDs
+        schema:
+          type: array
+          items:
+            type: string
+        examples:
+          application/json:
+            - "GSE12345"
+            - "GSE67890"
+      400:
+        description: Bad request - missing or invalid parameters
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "gse_ids parameter is required"
+        examples:
+          application/json:
+            error: "gse_ids parameter is required"
+    """
+    logger.info(f'/similar_datasets {log_request(request)}')
+
+    data = request.get_json()
+    if not data or 'gse_ids' not in data:
+        return jsonify({"error": "gse_ids parameter is required"}), 400
+    if 'count' not in data:
+        return jsonify({"error": "count parameter is required"}), 400
+
+    gse_ids = data['gse_ids']
+    if not isinstance(gse_ids, list):
+        return jsonify({"error": "gse_ids must be an array"}), 400
+    gse_ids = [str(gid).strip() for gid in gse_ids if str(gid).strip()]
+    if not gse_ids:
+        return jsonify({"error": "At least one valid GSE ID is required"}), 400
+
+    count = data['count']
+    if not isinstance(count, int) or count < 1 or count > 100:
+        return jsonify({"error": "count must be an integer between 1 and 100"}), 400
+
+    try:
+        with requests.Session() as http_session:
+            client = GeoFinderClient(http_session)
+            return jsonify(client.get_similar_datasets(gse_ids, count))
+
+    except Exception as e:
+        logger.exception(f'/similar_datasets exception {e}')
         return jsonify({"error": str(e)}), 500
 
 
