@@ -2,7 +2,6 @@ import asyncio
 import datetime
 import logging
 from concurrent.futures import ProcessPoolExecutor
-from typing import List
 
 import aiohttp
 
@@ -105,13 +104,36 @@ class GEOmetadbBackfiller:
             logger.info("Skipping %d already existing datasets", skipped_count)
         return filtered_accessions
 
+    async def _process_single_dataset(
+            self,
+            accession: str,
+            downloader: GSEArchiveDownloader,
+            parser: GSEArchiveParser,
+            writer: DatasetWriter,
+    ) -> GSE:
+        """Download, parse, and write a single dataset through the pipeline."""
+        try:
+            downloaded_archive = await downloader.download_gse_archive(accession)
+            parsed_dataset = await parser.submit_archive_for_parsing(downloaded_archive)
+            written_parsed_dataset = await writer.add(parsed_dataset)
+            return written_parsed_dataset.gse
+        except Exception:
+            logger.exception("Failed to process dataset %s", accession)
+            raise
+
+    async def _gather(self, tasks: list, return_exceptions: bool) -> list:
+        """Dispatch tasks using tqdm or plain asyncio.gather depending on show_progress."""
+        if self.show_progress:
+            return await tqdm_gather(*tasks, return_exceptions=return_exceptions)
+        return await asyncio.gather(*tasks, return_exceptions=return_exceptions)
+
     async def download_datasets(
             self,
             gse_accessions: list[str],
             skip_existing: bool = True,
             ignore_failures: bool = False,
             dont_redownload: bool = False,
-    ) -> List[GSE]:
+    ) -> list[GSE]:
         """
         Run the backfill pipeline as parallel per-accession tasks.
 
@@ -143,26 +165,12 @@ class GEOmetadbBackfiller:
             ) as session, GSEArchiveParser(loop, big_dataset_executor, small_dataset_executor, self.chunk_size,
                                            self.big_gzip_threshold_mb) as parser:
                 downloader = GSEArchiveDownloader(self.config, session, dont_redownload)
-                writer = DatasetWriter(
-                    gse_repository=self.gse_repository,
-                )
-
-                async def process_single_dataset(accession: str) -> GSE:
-                    """Download, parse, and write a single dataset through the pipeline."""
-                    try:
-                        downloaded_archive = await downloader.download_gse_archive(accession)
-                        parsed_dataset = await parser.submit_archive_for_parsing(downloaded_archive)
-                        written_parsed_dataset = await writer.add(parsed_dataset)
-                        return written_parsed_dataset.gse
-                    except Exception:
-                        logger.exception("Failed to process dataset %s", accession)
-                        raise
-
-                pipeline_tasks = [process_single_dataset(acc) for acc in accessions_to_process]
-                if self.show_progress:
-                    return await tqdm_gather(*pipeline_tasks, return_exceptions=ignore_failures)
-                else:
-                    return await asyncio.gather(*pipeline_tasks, return_exceptions=ignore_failures)
+                writer = DatasetWriter(gse_repository=self.gse_repository)
+                pipeline_tasks = [
+                    self._process_single_dataset(acc, downloader, parser, writer)
+                    for acc in accessions_to_process
+                ]
+                return await self._gather(pipeline_tasks, return_exceptions=ignore_failures)
 
 
 if __name__ == "__main__":
