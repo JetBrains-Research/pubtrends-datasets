@@ -77,23 +77,22 @@ class GSEArchiveParser:
         batch: list[tuple[DownloadedArchive, asyncio.Future[ParsedDataset]]] = []
         async with self.lock:
             time_since_last_flush = time.time() - self.last_flush_time
-            if time_since_last_flush < 10:
+            if not(time_since_last_flush > 10 or len(self.batch) > self.chunk_size):
+                return
+            if len(self.batch) == 0:
                 return
             batch = self.batch
             self.batch = []
+            self.last_flush_time = time.time()
 
-        if not batch:
-            return
-
-        await self._process_archive_batch(batch)
+        task = asyncio.create_task(self._process_archive_batch(batch))
+        self._background_tasks.append(task)
+        task.add_done_callback(self._background_tasks.remove)
 
     async def _process_archive_batch(self, batch: list[tuple[DownloadedArchive, Future[ParsedDataset]]]):
         """
         Parses a batch of small archives and sets the results in their associated futures.
         """
-        async with self.lock:
-            self.last_flush_time = time.time()
-
         archives = [item[0] for item in batch]
         archive_paths = [archive.archive_path for archive in archives]
         results = await self.loop.run_in_executor(
@@ -141,16 +140,8 @@ class GSEArchiveParser:
         future: asyncio.Future[ParsedDataset] = self.loop.create_future()
         async with self.lock:
             self.batch.append((archive, future))
-            batch_to_parse = []
-            if len(self.batch) >= self.chunk_size:
-                batch_to_parse = self.batch
-                self.batch = []
 
-        if batch_to_parse:
-            task = asyncio.create_task(self._process_archive_batch(batch_to_parse))
-            self._background_tasks.append(task)
-            task.add_done_callback(self._background_tasks.remove)
-
+        await self.flush()
         return await shield(future)
 
     @staticmethod
