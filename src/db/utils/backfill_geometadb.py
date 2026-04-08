@@ -84,18 +84,13 @@ class GEOmetadbBackfiller:
     async def _filter_existing_accessions(
             self,
             gse_accessions: list[str],
-            skip_existing: bool,
     ) -> list[str]:
         """
         Filter out accessions already present in geometadb.
 
         :param gse_accessions: Candidate GEO accessions.
-        :param skip_existing: If False, return input unchanged.
         :return: Accessions that should be downloaded.
         """
-        if not skip_existing or not gse_accessions:
-            return gse_accessions
-
         existing_gses = await asyncio.to_thread(self.gse_repository.get_gses, gse_accessions)
         existing_accessions = {gse.gse for gse in existing_gses if gse.gse is not None}
         filtered_accessions = [accession for accession in gse_accessions if accession not in existing_accessions]
@@ -143,7 +138,7 @@ class GEOmetadbBackfiller:
         :param dont_redownload: If True, does not re-download archives that have already been downloaded.
         :return: Successfully parsed and saved GSE models.
         """
-        accessions_to_process = await self._filter_existing_accessions(gse_accessions, skip_existing)
+        accessions_to_process = await self._filter_existing_accessions(gse_accessions) if skip_existing else gse_accessions
         if not accessions_to_process:
             return []
 
