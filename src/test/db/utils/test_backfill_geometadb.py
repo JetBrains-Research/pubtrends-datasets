@@ -39,7 +39,6 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         self.mock_parser.return_value.__aenter__ = AsyncMock(return_value=self.mock_parser_instance)
         self.mock_parser.return_value.__aexit__ = AsyncMock(return_value=None)
 
-        self.mock_writer = self.enterContext(patch("src.db.utils.backfill_geometadb.DatasetWriter"))
 
     @staticmethod
     def _create_mock_gse(accession: str) -> GSE:
@@ -64,13 +63,12 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
 
         self.mock_downloader.return_value.download_gse_archive = AsyncMock(return_value=mock_downloaded_archive)
         self.mock_parser_instance.submit_archive_for_parsing = AsyncMock(return_value=mock_parsed_dataset)
-        self.mock_writer.return_value.add = AsyncMock(return_value=mock_parsed_dataset)
-
         datasets = self.backfiller.backfill_geometadb(self.start_date, self.end_date)
 
         self.mock_get_accessions.assert_called_once()
         self.assertEqual(len(datasets), 1)
         self.assertEqual(datasets[0].gse, self.gse_accessions[0])
+        self.gse_repository.save_gses_with_gsms.assert_called_once()
 
     def test_backfill_geometadb_download_failure(self):
         self.mock_downloader.return_value.download_gse_archive = AsyncMock(
@@ -80,7 +78,7 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         self.assertRaises(asyncio.TimeoutError, self.backfiller.backfill_geometadb, self.start_date, self.end_date)
         self.mock_get_accessions.assert_called_once()
         self.mock_parser.parse_dataset.assert_not_called()
-        self.mock_writer.add.assert_not_called()
+        self.gse_repository.save_gses_with_gsms.assert_not_called()
 
     def test_backfill_geometadb_invalid_gzip(self):
         self.mock_downloader.return_value.download_gse_archive = AsyncMock(
@@ -108,7 +106,7 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         self.mock_get_accessions.assert_called_once()
         self.mock_downloader.return_value.download_gse_archive.assert_called_once()
         self.mock_parser_instance.submit_archive_for_parsing.assert_called_once()
-        self.mock_writer.return_value.add.assert_not_called()
+        self.gse_repository.save_gses_with_gsms.assert_not_called()
 
     def test_backfill_geometadb_invalid_date_range(self):
         self.assertRaises(ValueError, self.backfiller.backfill_geometadb, self.end_date, self.start_date)
@@ -154,8 +152,6 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
             return mock_parsed_dataset
 
         self.mock_parser_instance.submit_archive_for_parsing = AsyncMock(side_effect=parse_side_effect)
-        self.mock_writer.return_value.add = AsyncMock(return_value=mock_parsed_dataset)
-
         datasets = self.backfiller.backfill_geometadb(
             self.start_date, self.end_date, ignore_failures=True
         )
@@ -168,4 +164,4 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         self.assertEqual(datasets[1].gse, "GSE000001")
         self.assertEqual(self.mock_downloader.return_value.download_gse_archive.call_count, 2)
         self.assertEqual(self.mock_parser_instance.submit_archive_for_parsing.call_count, 2)
-        self.mock_writer.return_value.add.assert_called_once()
+        self.gse_repository.save_gses_with_gsms.assert_called_once()

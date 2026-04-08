@@ -4,18 +4,16 @@ import logging
 from concurrent.futures import ProcessPoolExecutor
 
 import aiohttp
+from tqdm.asyncio import tqdm_asyncio as tqdm
 
 from src.config.config import Config
 from src.config.configure_log_file import configure_log_file
 from src.db.models import GSE
-from src.db.utils.gse_archive_parser import GSEArchiveParser
-from src.db.utils.dataset_writer import DatasetWriter
-from src.db.utils.get_geo_accessions_for_dates import get_gse_ids_by_last_update_date
-from src.db.utils.gse_archive_downloader import GSEArchiveDownloader
-from tqdm.asyncio import tqdm_asyncio as tqdm
-
 from src.db.repositories.gse_repository import GSERepository
 from src.db.repositories.gsm_repository import GSMRepository
+from src.db.utils.get_geo_accessions_for_dates import get_gse_ids_by_last_update_date
+from src.db.utils.gse_archive_downloader import GSEArchiveDownloader
+from src.db.utils.gse_archive_parser import GSEArchiveParser
 
 RETRY_ATTEMPTS = 3
 GEO_FTP_HOST = "ftp.ncbi.nlm.nih.gov"
@@ -104,14 +102,13 @@ class GEOmetadbBackfiller:
             accession: str,
             downloader: GSEArchiveDownloader,
             parser: GSEArchiveParser,
-            writer: DatasetWriter,
     ) -> GSE:
         """Download, parse, and write a single dataset through the pipeline."""
         try:
             downloaded_archive = await downloader.download_gse_archive(accession)
             parsed_dataset = await parser.submit_archive_for_parsing(downloaded_archive)
-            written_parsed_dataset = await writer.add(parsed_dataset)
-            return written_parsed_dataset.gse
+            await asyncio.to_thread(self.gse_repository.save_gses_with_gsms, [parsed_dataset.gse], parsed_dataset.gsms)
+            return parsed_dataset.gse
         except Exception:
             logger.exception("Failed to process dataset %s", accession)
             raise
@@ -160,9 +157,8 @@ class GEOmetadbBackfiller:
             ) as session, GSEArchiveParser(loop, big_dataset_executor, small_dataset_executor, self.chunk_size,
                                            self.big_gzip_threshold_mb) as parser:
                 downloader = GSEArchiveDownloader(self.config, session, dont_redownload)
-                writer = DatasetWriter(gse_repository=self.gse_repository)
                 pipeline_tasks = [
-                    self._process_single_dataset(acc, downloader, parser, writer)
+                    self._process_single_dataset(acc, downloader, parser)
                     for acc in accessions_to_process
                 ]
                 return await self._gather(pipeline_tasks, return_exceptions=ignore_failures)
