@@ -1,14 +1,14 @@
 import concurrent
 import logging
 import time
-from typing import List, Iterable, Dict
+from typing import List, Iterable
 
 import numpy as np
 import spacy
 
 from src.config.config import Config
-from src.db.models import GSM
-from src.db.models.gse import GSE, GSE_DTO
+from src.db.models.gse import GSE
+from src.db.models.gse_with_gsms import GSEWithGSMs
 from src.semantic_search.embeddings_service import fetch_texts_embedding
 from src.semantic_search.scored_gse import ScoredGSE
 
@@ -31,7 +31,7 @@ def stable_deduplicate(iterable: Iterable, key_fn):
     return [x for x in iterable if not (key_fn(x) in added or added.add(key_fn(x)))]
 
 
-def get_chunks(text, max_tokens_per_chunk=128, overlap_sentences=1):
+def get_chunks(text, max_tokens_per_chunk=128, overlap_sentences=1) -> List[str]:
     """
     Split text into a list of overlapping chunks.
 
@@ -94,8 +94,10 @@ class SemanticSearcher:
         return get_chunks(text, self.max_tokens_per_chunk, self.overlap_sentences)
 
 
-    def chunk_gse(self, gse: GSE, gsms: List[GSM]) -> List[str]:
-        chunks = [gse.title]
+    def chunk_gse(self, gse_with_gsms: GSEWithGSMs) -> List[str]:
+        gse = gse_with_gsms.gse
+        gsms = gse_with_gsms.gsms
+        chunks = [gse.title] if gse.title else []
         if gse.is_superseries():
             return chunks
         if gse.summary:
@@ -108,17 +110,21 @@ class SemanticSearcher:
             )
         return chunks
 
-    def embed_gses(self, gses: List[GSE], gsms_for_gse: Dict[str, List[GSM]]) -> list[tuple[np.ndarray, GSE]]:
+    def embed_gses(self, gses_with_gsms: List[GSEWithGSMs]) -> list[tuple[np.ndarray, GSE]]:
         start = time.perf_counter()
         with concurrent.futures.ProcessPoolExecutor(max_workers=self.chunking_workers) as executor:
-            chunks_for_gses = list(executor.map(self.chunk_gse, gses, (gsms_for_gse[gse.gse] for gse in gses)))
-            chunks_with_gse = [(chunk, gse) for chunks, gse in zip(chunks_for_gses, gses) for chunk in chunks]
+            chunks_for_gses = list(executor.map(self.chunk_gse, gses_with_gsms))
+            chunks_with_gse = [
+                (chunk, gse_with_gsms.gse)
+                for chunks, gse_with_gsms in zip(chunks_for_gses, gses_with_gsms)
+                for chunk in chunks
+            ]
         end = time.perf_counter()
         chunk_count = len(chunks_with_gse)
 
-        number_of_gsms = sum(len(gsms) for gsms in gsms_for_gse.values())
+        number_of_gsms = sum(len(g.gsms) for g in gses_with_gsms)
         logger.info(
-            f"Chunks created in {end - start} seconds for {len(gses)} GSEs and {chunk_count} chunks and {number_of_gsms} GSMs")
+            f"Chunks created in {end - start} seconds for {len(gses_with_gsms)} GSEs and {chunk_count} chunks and {number_of_gsms} GSMs")
 
         embedding_start_time = time.perf_counter()
         embeddings = fetch_texts_embedding([chunk for chunk, _ in chunks_with_gse], self.embeddings_service_url)
@@ -128,12 +134,12 @@ class SemanticSearcher:
 
         return [(embedding, gse) for embedding, (_, gse) in zip(embeddings, chunks_with_gse)]
 
-    def rank_by_relevance(self, gses: List[GSE], gsms_for_gse: Dict[str, List[GSM]], query: str) -> List[ScoredGSE]:
-        if not gses:
+    def rank_by_relevance(self, gses_with_gsms: List[GSEWithGSMs], query: str) -> List[ScoredGSE]:
+        if not gses_with_gsms:
             return []
         query_embedding = fetch_texts_embedding([query], self.embeddings_service_url)[0]
 
-        embeddings_with_gse = self.embed_gses(gses, gsms_for_gse)
+        embeddings_with_gse = self.embed_gses(gses_with_gsms)
         embeddings = np.array([embedding for embedding, _ in embeddings_with_gse])
         scores = cosine_similarity(query_embedding, embeddings)
         scored_gses = [

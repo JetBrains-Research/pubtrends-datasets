@@ -20,6 +20,7 @@ from src.db.loaders.ncbi_gse_loader import NCBIGSELoader
 from src.db.loaders.ncbi_gsm_loader import NCBIGSMLoader
 from src.db.models import mapper_registry
 from src.db.models.gse import GSE_DTO, GSE
+from src.db.models.gse_with_gsms import GSEWithGSMs
 from src.db.models.gsm import GSM
 from src.db.repositories.gse_repository import GSERepository
 from src.db.repositories.gsm_repository import GSMRepository
@@ -436,7 +437,8 @@ def get_relevant_datasets():
             gse_accessions = dataset_linker.link_to_datasets(pubmed_ids)
             gses = _get_gse_details(gse_accessions, http_session)
             gse_gsm_map = gsm_repository.get_gse_gsm_mapping(gse_accessions)
-        return jsonify(semantic_search.rank_by_relevance(gses, gse_gsm_map, query))
+            gses_with_gsms = [GSEWithGSMs(gse, gse_gsm_map.get(gse.gse, [])) for gse in gses]
+        return jsonify(semantic_search.rank_by_relevance(gses_with_gsms, query))
     except EmbeddingsServiceError as e:
         logger.error(f'/relevant_datasets embeddings service error: {e}')
         return jsonify({"error": str(e)}), 503
