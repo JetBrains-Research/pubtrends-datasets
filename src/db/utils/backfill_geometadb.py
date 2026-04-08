@@ -118,6 +118,7 @@ class GEOmetadbBackfiller:
         :param gse_accessions: GEO accessions to process.
         :param skip_existing: If True, skip datasets already present.
         :param ignore_failures: If True, continue processing after stage failures.
+        :param dont_redownload: If True, does not re-download archives that have already been downloaded.
         :return: Successfully parsed and saved GSE models.
         """
         accessions_to_process = await self._filter_existing_accessions(gse_accessions, skip_existing)

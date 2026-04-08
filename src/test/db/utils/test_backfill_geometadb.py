@@ -41,7 +41,8 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
 
         self.mock_writer = self.enterContext(patch("src.db.utils.backfill_geometadb.DatasetWriter"))
 
-    def _create_mock_gse(self, accession: str) -> GSE:
+    @staticmethod
+    def _create_mock_gse(accession: str) -> GSE:
         """Create a mock GSE object."""
         return GSE(
             gse=accession,

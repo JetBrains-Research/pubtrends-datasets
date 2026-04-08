@@ -1,7 +1,6 @@
 import asyncio
 
 from src.db.repositories.gse_repository import GSERepository
-from src.db.repositories.gsm_repository import GSMRepository
 from src.db.utils.pipeline_models import ParsedDataset
 
 
