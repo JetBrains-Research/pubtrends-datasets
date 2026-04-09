@@ -111,6 +111,17 @@ class SemanticSearcher:
         return chunks
 
     def embed_gses(self, gses_with_gsms: List[GSEWithGSMs]) -> list[tuple[np.ndarray, GSE]]:
+        chunks_with_gse = self.chunk_gses(gses_with_gsms)
+
+        embedding_start_time = time.perf_counter()
+        embeddings = fetch_texts_embedding([chunk for chunk, _ in chunks_with_gse], self.embeddings_service_url)
+        embedding_end_time = time.perf_counter()
+        logger.info(
+            f"Embeddings fetched in {embedding_end_time - embedding_start_time} seconds for {len(chunks_with_gse)} chunks")
+
+        return [(embedding, gse) for embedding, (_, gse) in zip(embeddings, chunks_with_gse)]
+
+    def chunk_gses(self, gses_with_gsms: list[GSEWithGSMs]) -> list[tuple[str, GSE]]:
         start = time.perf_counter()
         with concurrent.futures.ProcessPoolExecutor(max_workers=self.chunking_workers) as executor:
             chunks_for_gses = list(executor.map(self.chunk_gse, gses_with_gsms))
@@ -120,19 +131,11 @@ class SemanticSearcher:
                 for chunk in chunks
             ]
         end = time.perf_counter()
-        chunk_count = len(chunks_with_gse)
 
         number_of_gsms = sum(len(g.gsms) for g in gses_with_gsms)
         logger.info(
-            f"Chunks created in {end - start} seconds for {len(gses_with_gsms)} GSEs and {chunk_count} chunks and {number_of_gsms} GSMs")
-
-        embedding_start_time = time.perf_counter()
-        embeddings = fetch_texts_embedding([chunk for chunk, _ in chunks_with_gse], self.embeddings_service_url)
-        embedding_end_time = time.perf_counter()
-        logger.info(
-            f"Embeddings fetched in {embedding_end_time - embedding_start_time} seconds for {chunk_count} chunks")
-
-        return [(embedding, gse) for embedding, (_, gse) in zip(embeddings, chunks_with_gse)]
+            f"Chunks created in {end - start} seconds for {len(gses_with_gsms)} GSEs and {len(chunks_with_gse)} chunks and {number_of_gsms} GSMs")
+        return chunks_with_gse
 
     def rank_by_relevance(self, gses_with_gsms: List[GSEWithGSMs], query: str) -> List[ScoredGSE]:
         if not gses_with_gsms:
