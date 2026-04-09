@@ -1,12 +1,10 @@
 """Gene Expression Omnibus Sample (GSM) data model."""
-import io
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict
 
 from sqlalchemy import Column, Index, PrimaryKeyConstraint, REAL, Text
 
 from src.db.models.mapper_registry import mapper_registry
-
 
 
 @mapper_registry.mapped
