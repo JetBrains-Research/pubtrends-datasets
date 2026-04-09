@@ -93,11 +93,10 @@ class SemanticSearcher:
     def _get_chunks(self, text: str) -> List[str]:
         return get_chunks(text, self.max_tokens_per_chunk, self.overlap_sentences)
 
-
     def chunk_gse(self, gse_with_gsms: GSEWithGSMs) -> List[str]:
         gse = gse_with_gsms.gse
         gsms = gse_with_gsms.gsms
-        chunks = [gse.title] if gse.title else []
+        chunks = [gse.title]
         if gse.is_superseries():
             return chunks
         if gse.summary:
