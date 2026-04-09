@@ -15,3 +15,4 @@
 - Do not modify the uv.lock and pyproject.toml files manually. They are managed by uv.
 - When refactoring, always run `uv run python -m unittest discover src/test` before finishing.
 - When making large numbers of HTTP requests (>10 per second), use aiohttp instead of requests for better performance. 
+- Write docstrings in reStructuredText format.

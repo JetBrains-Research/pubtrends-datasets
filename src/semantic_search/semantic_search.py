@@ -94,6 +94,12 @@ class SemanticSearcher:
         return get_chunks(text, self.max_tokens_per_chunk, self.overlap_sentences)
 
     def chunk_gse(self, gse_with_gsms: GSEWithGSMs) -> List[str]:
+        """
+        Chunk the metadata of a GSE and its GSMs into smaller chunks for embedding.
+
+        :param gse_with_gsms: A GSE and its associated GSMs to chunk.
+        :returns: List of text chunks derived from the GSE and GSM metadata.
+        """
         gse = gse_with_gsms.gse
         gsms = gse_with_gsms.gsms
         chunks = [gse.title]
@@ -110,6 +116,12 @@ class SemanticSearcher:
         return chunks
 
     def embed_gses(self, gses_with_gsms: List[GSEWithGSMs]) -> list[tuple[np.ndarray, GSE]]:
+        """
+        Embed the metadata of a list of GSEs and their GSMs into embeddings.
+
+        :param gses_with_gsms: List of GSEs and their associated GSMs to embed.
+        :returns: List of (embedding, GSE) pairs.
+        """
         chunks_with_gse = self.chunk_gses(gses_with_gsms)
 
         embedding_start_time = time.perf_counter()
@@ -121,6 +133,12 @@ class SemanticSearcher:
         return [(embedding, gse) for embedding, (_, gse) in zip(embeddings, chunks_with_gse)]
 
     def chunk_gses(self, gses_with_gsms: list[GSEWithGSMs]) -> list[tuple[str, GSE]]:
+        """
+        Chunk the metadata of a list of GSEs and their GSMs into smaller chunks for embedding.
+
+        :param gses_with_gsms: List of GSEs and their associated GSMs to chunk.
+        :returns: List of (chunk, GSE) pairs.
+        """
         start = time.perf_counter()
         with concurrent.futures.ProcessPoolExecutor(max_workers=self.chunking_workers) as executor:
             chunks_for_gses = list(executor.map(self.chunk_gse, gses_with_gsms))
@@ -137,6 +155,13 @@ class SemanticSearcher:
         return chunks_with_gse
 
     def rank_by_relevance(self, gses_with_gsms: List[GSEWithGSMs], query: str) -> List[ScoredGSE]:
+        """
+        Rank a list of GSEs by relevance to a query using cosine similarity between query and GSE embeddings.
+
+        :param gses_with_gsms: List of GSEs and their associated GSMs to rank.
+        :param query: The search query to rank GSEs against.
+        :returns: Deduplicated list of GSEs with scores, sorted by descending relevance.
+        """
         if not gses_with_gsms:
             return []
         query_embedding = fetch_texts_embedding([query], self.embeddings_service_url)[0]
