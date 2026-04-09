@@ -2,9 +2,9 @@ import asyncio
 from typing import Iterable, List
 
 from src.config.config import Config
-from src.db.loaders import GSELoader
+from src.db.loaders.gse_loader import GSELoader
 from src.db.models import GSE
-from src.db.repositories import GSERepository
+from src.db.repositories.gse_repository import GSERepository
 from src.db.repositories.gsm_repository import GSMRepository
 from src.db.utils.backfill_geometadb import GEOmetadbBackfiller
 
