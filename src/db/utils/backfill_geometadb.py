@@ -2,21 +2,19 @@ import asyncio
 import datetime
 import logging
 from concurrent.futures import ProcessPoolExecutor
-from typing import List, Iterable
+from typing import Iterable
 
 import aiohttp
+from tqdm.asyncio import tqdm_asyncio as tqdm
 
 from src.config.config import Config
 from src.config.configure_log_file import configure_log_file
 from src.db.models import GSE
-from src.db.utils.gse_archive_parser import GSEArchiveParser
-from src.db.utils.dataset_writer import DatasetWriter
-from src.db.utils.get_geo_accessions_for_dates import get_gse_ids_by_last_update_date
-from src.db.utils.gse_archive_downloader import GSEArchiveDownloader
-from tqdm.asyncio import tqdm_asyncio as tqdm
-
 from src.db.repositories.gse_repository import GSERepository
 from src.db.repositories.gsm_repository import GSMRepository
+from src.db.utils.get_geo_accessions_for_dates import get_gse_ids_by_last_update_date
+from src.db.utils.gse_archive_downloader import GSEArchiveDownloader
+from src.db.utils.gse_archive_parser import GSEArchiveParser
 
 RETRY_ATTEMPTS = 3
 GEO_FTP_HOST = "ftp.ncbi.nlm.nih.gov"
@@ -85,18 +83,13 @@ class GEOmetadbBackfiller:
     async def _filter_existing_accessions(
             self,
             gse_accessions: list[str],
-            skip_existing: bool,
     ) -> list[str]:
         """
         Filter out accessions already present in geometadb.
 
         :param gse_accessions: Candidate GEO accessions.
-        :param skip_existing: If False, return input unchanged.
         :return: Accessions that should be downloaded.
         """
-        if not skip_existing or not gse_accessions:
-            return gse_accessions
-
         existing_gses = await asyncio.to_thread(self.gse_repository.get_gses, gse_accessions)
         existing_accessions = {gse.gse for gse in existing_gses if gse.gse is not None}
         filtered_accessions = [accession for accession in gse_accessions if accession not in existing_accessions]
@@ -105,22 +98,45 @@ class GEOmetadbBackfiller:
             logger.info("Skipping %d already existing datasets", skipped_count)
         return filtered_accessions
 
+    async def _process_single_dataset(
+            self,
+            accession: str,
+            downloader: GSEArchiveDownloader,
+            parser: GSEArchiveParser,
+    ) -> GSE:
+        """Download, parse, and write a single dataset through the pipeline."""
+        try:
+            downloaded_archive = await downloader.download_gse_archive(accession)
+            parsed_dataset = await parser.submit_archive_for_parsing(downloaded_archive)
+            await asyncio.to_thread(self.gse_repository.save_gses_with_gsms, [parsed_dataset.gse], parsed_dataset.gsms)
+            return parsed_dataset.gse
+        except Exception:
+            logger.exception("Failed to process dataset %s", accession)
+            raise
+
+    async def _gather(self, tasks: list, return_exceptions: bool) -> list:
+        """Dispatch tasks using tqdm or plain asyncio.gather depending on show_progress."""
+        if self.show_progress:
+            return await tqdm_gather(*tasks, return_exceptions=return_exceptions)
+        return await asyncio.gather(*tasks, return_exceptions=return_exceptions)
+
     async def download_datasets(
             self,
             gse_accessions: Iterable[str],
             skip_existing: bool = True,
             ignore_failures: bool = False,
             dont_redownload: bool = False,
-    ) -> List[GSE]:
+    ) -> list[GSE]:
         """
         Run the backfill pipeline as parallel per-accession tasks.
 
         :param gse_accessions: GEO accessions to process.
         :param skip_existing: If True, skip datasets already present.
         :param ignore_failures: If True, continue processing after stage failures.
+        :param dont_redownload: If True, does not re-download archives that have already been downloaded.
         :return: Successfully parsed and saved GSE models.
         """
-        accessions_to_process = await self._filter_existing_accessions(gse_accessions, skip_existing)
+        accessions_to_process = await self._filter_existing_accessions(gse_accessions) if skip_existing else gse_accessions
         if not accessions_to_process:
             return []
 
@@ -142,26 +158,11 @@ class GEOmetadbBackfiller:
             ) as session, GSEArchiveParser(loop, big_dataset_executor, small_dataset_executor, self.archive_parser_chunk_size,
                                            self.big_gzip_threshold_mb) as parser:
                 downloader = GSEArchiveDownloader(self.config, session, dont_redownload)
-                writer = DatasetWriter(
-                    gse_repository=self.gse_repository,
-                )
-
-                async def process_single_dataset(accession: str) -> GSE:
-                    """Download, parse, and write a single dataset through the pipeline."""
-                    try:
-                        downloaded_archive = await downloader.download_gse_archive(accession)
-                        parsed_dataset = await parser.submit_archive_for_parsing(downloaded_archive)
-                        written_parsed_dataset = await writer.add(parsed_dataset)
-                        return written_parsed_dataset.gse
-                    except Exception:
-                        logger.exception("Failed to process dataset %s", accession)
-                        raise
-
-                pipeline_tasks = [process_single_dataset(acc) for acc in accessions_to_process]
-                if self.show_progress:
-                    return await tqdm_gather(*pipeline_tasks, return_exceptions=ignore_failures)
-                else:
-                    return await asyncio.gather(*pipeline_tasks, return_exceptions=ignore_failures)
+                pipeline_tasks = [
+                    self._process_single_dataset(acc, downloader, parser)
+                    for acc in accessions_to_process
+                ]
+                return await self._gather(pipeline_tasks, return_exceptions=ignore_failures)
 
 
 if __name__ == "__main__":
