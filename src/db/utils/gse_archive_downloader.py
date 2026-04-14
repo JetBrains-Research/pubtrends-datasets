@@ -23,7 +23,6 @@ class GSEArchiveDownloader:
     def __init__(self, config: Config, session: aiohttp.ClientSession, dont_redownload: bool) -> None:
         self.download_folder = config.dataset_download_folder
         self.max_connections = config.max_ncbi_connections
-        self.semaphore = asyncio.Semaphore(self.max_connections)
         self.session = session
         self.dont_redownload = dont_redownload
 
@@ -66,8 +65,7 @@ class GSEArchiveDownloader:
         url = GSEArchiveDownloader.get_download_url(gse_accession)
         if os.path.exists(download_path) and self.dont_redownload:
             return DownloadedArchive(accession=gse_accession, archive_path=download_path)
-        async with self.semaphore:
-            await self.download_gzip(download_path, url)
+        await self.download_gzip(download_path, url)
         return DownloadedArchive(accession=gse_accession, archive_path=download_path)
 
     @staticmethod
