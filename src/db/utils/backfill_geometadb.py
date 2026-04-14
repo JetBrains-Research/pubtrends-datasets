@@ -1,27 +1,19 @@
 import asyncio
 import datetime
-import gzip
 import logging
-import os.path
 from concurrent.futures import ProcessPoolExecutor
-from typing import List
 
-import GEOparse
-import aiofiles
 import aiohttp
-import pandas.errors
-from dacite import from_dict
-from tenacity import retry, stop_after_attempt
 from tqdm.asyncio import tqdm_asyncio as tqdm
 
 from src.config.config import Config
-from src.db.loaders.geoparse_to_geometadb import format_geoparse_gse_metadata
-from src.db.utils.get_geo_accessions_for_dates import get_gse_ids_by_last_update_date
-from src.db.models.gse import GSE
-from src.db.repositories.gse_repository import GSERepository
-from src.helpers.is_gzip_vaild import is_gzip_valid
-from src.helpers.remove_if_exists import async_remove_if_exists
 from src.config.configure_log_file import configure_log_file
+from src.db.models import GSE
+from src.db.repositories.gse_repository import GSERepository
+from src.db.repositories.gsm_repository import GSMRepository
+from src.db.utils.get_geo_accessions_for_dates import get_gse_ids_by_last_update_date
+from src.db.utils.gse_archive_downloader import GSEArchiveDownloader
+from src.db.utils.gse_archive_parser import GSEArchiveParser
 
 RETRY_ATTEMPTS = 3
 GEO_FTP_HOST = "ftp.ncbi.nlm.nih.gov"
@@ -42,195 +34,178 @@ async def tqdm_gather(*fs, return_exceptions=False, **kwargs):
 
 
 class GEOmetadbBackfiller:
-    def __init__(self, config: Config, gse_repository: GSERepository):
-        self.dataset_parser_workers = config.dataset_parser_workers
-        self.max_connections = config.max_ncbi_connections
-        self.download_folder = config.dataset_download_folder
+    """Coordinates download, parse, and save stages for GEO backfill."""
+
+    def __init__(
+            self,
+            config: Config,
+            gse_repository: GSERepository,
+            gsm_repository: GSMRepository,
+    ) -> None:
+        self.config = config
         self.gse_repository = gse_repository
-        self.semaphore = asyncio.Semaphore(self.max_connections)
+        self.gsm_repository = gsm_repository
         self.show_progress = config.show_backfill_progress
+        self.chunk_size = config.chunk_size
+        self.big_gzip_threshold_mb = config.big_gzip_threshold_mb
+        self.small_dataset_parser_workers = config.small_dataset_parser_workers
+        self.big_dataset_parser_workers = config.big_dataset_parser_workers
 
-    @staticmethod
-    def get_download_url(gse_accession: str) -> str:
+    def backfill_geometadb(
+            self,
+            start_date: datetime.datetime,
+            end_date: datetime.datetime,
+            skip_existing: bool = True,
+            ignore_failures: bool = False,
+            dont_redownload: bool = False,
+    ) -> list[GSE]:
         """
-        Returns the download URL for a given GSE accession.
+        Download and persist GEO datasets from the given date range.
 
-        :param gse_accession: GEO accession for the dataset (ex. GSE12345)
-        :return: Download URL
-        """
-        return (
-            f"https://{GEO_FTP_HOST}/"
-            f"geo/series/{gse_accession[:-3]}nnn/{gse_accession}/soft/"
-            f"{gse_accession}_family.soft.gz"
-        )
-
-    async def download_dataset(self, gse_accession: str, executor: ProcessPoolExecutor, session: aiohttp.ClientSession,
-                               skip_existing: bool) -> GSE:
-        """
-        Downloads a GEO dataset archive, parses it using GEOparse, and saves it
-        to the geometadb database.
-
-        :param gse_accession: GEO accession number for the dataset (ex. GSE12345)
-        :param executor: ProcessPoolExecutor to use for parsing.
-        :param session: aiohttp ClientSession to use for downloading.
-        :param skip_existing: If the dataset already exists in the database, return it instead of downloading it again.
-        :return: GSE object representing the dataset.
-        """
-        existing_dataset = await self.gse_repository.get_gses_async([gse_accession])
-        if existing_dataset and skip_existing:
-            return existing_dataset[0]
-
-        download_path = os.path.join(self.download_folder, f"{gse_accession}.soft.gz")
-        url = GEOmetadbBackfiller.get_download_url(gse_accession)
-        await self.download_gse_file(download_path, session, url)
-
-        loop = asyncio.get_running_loop()
-        gse = await loop.run_in_executor(executor, GEOmetadbBackfiller.parse_dataset, download_path)
-        await self.gse_repository.save_gses_async([gse])
-        logger.info(f"Saved dataset {gse_accession}")
-        return gse
-
-    @retry(stop=stop_after_attempt(RETRY_ATTEMPTS), reraise=True)
-    async def download_gse_file(self, download_path: str, session: aiohttp.ClientSession, url: str):
-        """
-        Downloads the GEO dataset archive from the given URL and saves it to the given path.
-
-        :param download_path: Path to save the downloaded file.
-        :param session: aiohttp ClientSession to use for the download.
-        :param url: URL to download the dataset archive from.
-        """
-        async with self.semaphore:
-            try:
-                logger.info(f"Downloading: {url}")
-                async with (
-                    session.get(url) as response,
-                    aiofiles.open(download_path, mode='wb') as dataset_archive
-                ):
-                    async for chunk in response.content.iter_chunked(1024 * 1024):
-                        await dataset_archive.write(chunk)
-                if not await is_gzip_valid(download_path):
-                    raise gzip.BadGzipFile("Downloaded file is not a valid gzip file")
-                logger.info(f"Finished downloading: {url}")
-            except (aiohttp.ClientResponseError, aiohttp.ClientConnectionError, asyncio.TimeoutError) as e:
-                logger.exception(f"Network error downloading {url}: {e}")
-                await async_remove_if_exists(download_path)
-                raise e
-            except Exception as e:
-                logger.exception(f"Unexpected error saving {url} to {download_path}: {e}")
-                await async_remove_if_exists(download_path)
-                raise e
-
-    @staticmethod
-    def parse_dataset(gzip_path: str) -> GSE:
-        """
-        Parses a GEO dataset archive and returns a GSE object.
-
-        :param gzip_path: Path to the gzip archive of the dataset.
-        :return: GEOparse GSE object.
-        """
-        try:
-            geo = GEOparse.get_GEO(filepath=gzip_path, silent=True)
-            gse = from_dict(GSE, format_geoparse_gse_metadata(geo.metadata))
-            return gse
-        except gzip.BadGzipFile as e:
-            logger.exception(f"Error parsing GEO dataset archive - Invalid gzip file {gzip_path}")
-            raise e
-        except pandas.errors.ParserError as e:
-            logger.exception(f"Error parsing GEO dataset archive {gzip_path}")
-            raise e
-        except Exception as e:
-            logger.exception(f"Unexpected error parsing GEO dataset archive {gzip_path}")
-            raise e
-
-    def backfill_geometadb(self, start_date: datetime.datetime, end_date: datetime.datetime, skip_existing=True,
-                           ignore_failures=False):
-        """
-        Downloads GEO datasets from the given date range and saves them to the
-        geometadb database.
-
-        :param start_date: Start date for the date range to download datasets from.
-        :param end_date: End date for the date range to download datasets from.
-        :param skip_existing: If True, datasets that already exist in the database will not be re-downloaded.
-        :param ignore_failures: If True, datasets that fail to download will be ignored.
-        :return: List of downloaded GEO datasets from the given timeframe.
+        :param start_date: Inclusive start date.
+        :param end_date: Inclusive end date.
+        :param skip_existing: If True, skip datasets already in geometadb.
+        :param ignore_failures: If True, continue after stage failures.
+        :param dont_redownload: If True, does not re-download archives that have already been downloaded.
+        :return: Successfully parsed and saved GSE objects.
         """
         if end_date < start_date:
             raise ValueError("End date must be after start date")
+
         gse_accessions = get_gse_ids_by_last_update_date(start_date, end_date)
+        return asyncio.run(
+            self.download_datasets(gse_accessions, skip_existing=skip_existing, ignore_failures=ignore_failures,
+                                   dont_redownload=dont_redownload),
+            debug=True,
+        )
 
+    async def _filter_existing_accessions(
+            self,
+            gse_accessions: list[str],
+    ) -> list[str]:
+        """
+        Filter out accessions already present in geometadb.
+
+        :param gse_accessions: Candidate GEO accessions.
+        :return: Accessions that should be downloaded.
+        """
+        existing_gses = await asyncio.to_thread(self.gse_repository.get_gses, gse_accessions)
+        existing_accessions = {gse.gse for gse in existing_gses if gse.gse is not None}
+        filtered_accessions = [accession for accession in gse_accessions if accession not in existing_accessions]
+        skipped_count = len(gse_accessions) - len(filtered_accessions)
+        if skipped_count:
+            logger.info("Skipping %d already existing datasets", skipped_count)
+        return filtered_accessions
+
+    async def _process_single_dataset(
+            self,
+            accession: str,
+            downloader: GSEArchiveDownloader,
+            parser: GSEArchiveParser,
+    ) -> GSE:
+        """Download, parse, and write a single dataset through the pipeline."""
         try:
-            backfilled_gses = asyncio.run(self.download_datasets(gse_accessions, skip_existing, ignore_failures,
-                                                                 ), debug=True)
-            return backfilled_gses
-        except KeyboardInterrupt as e:
-            raise e
-        except Exception as e:
-            raise e
+            downloaded_archive = await downloader.download_gse_archive(accession)
+            parsed_dataset = await parser.submit_archive_for_parsing(downloaded_archive)
+            await asyncio.to_thread(self.gse_repository.save_gses_with_gsms, [parsed_dataset.gse], parsed_dataset.gsms)
+            return parsed_dataset.gse
+        except Exception:
+            logger.exception("Failed to process dataset %s", accession)
+            raise
 
-    async def download_datasets(self, gse_accessions: List[str], skip_existing=True, ignore_failures=False,
-                                on_dataset_complete=None):
+    async def _gather(self, tasks: list, return_exceptions: bool) -> list:
+        """Dispatch tasks using tqdm or plain asyncio.gather depending on show_progress."""
+        if self.show_progress:
+            return await tqdm_gather(*tasks, return_exceptions=return_exceptions)
+        return await asyncio.gather(*tasks, return_exceptions=return_exceptions)
+
+    async def download_datasets(
+            self,
+            gse_accessions: list[str],
+            skip_existing: bool = True,
+            ignore_failures: bool = False,
+            dont_redownload: bool = False,
+    ) -> list[GSE]:
         """
-        Downloads GEO datasets asynchronously and adds them to the geometadb database.
+        Run the backfill pipeline as parallel per-accession tasks.
 
-        :param gse_accessions: List of GEO accession numbers for the datasets to download (ex. GSE12345).
-        :param skip_existing: If True, datasets that already exist in the database will not be re-downloaded.
-        :param ignore_failures: If True, datasets that fail to download will be ignored.
-        :param on_dataset_complete: Optional callback function(gse_accession, success, error) called after each dataset.
-        :return: List of successfully downloaded GEO datasets.
+        :param gse_accessions: GEO accessions to process.
+        :param skip_existing: If True, skip datasets already present.
+        :param ignore_failures: If True, continue processing after stage failures.
+        :param dont_redownload: If True, does not re-download archives that have already been downloaded.
+        :return: Successfully parsed and saved GSE models.
         """
-        pool_size = self.dataset_parser_workers
+        accessions_to_process = await self._filter_existing_accessions(gse_accessions) if skip_existing else gse_accessions
+        if not accessions_to_process:
+            return []
 
-        logger.info(f"Downloading {len(gse_accessions)} datasets using {pool_size} workers")
-        with ProcessPoolExecutor(pool_size, initializer=configure_log_file) as executor:
-            async with aiohttp.ClientSession(raise_for_status=True,
-                                             timeout=aiohttp.ClientTimeout(total=None, sock_connect=10,
-                                                                           sock_read=10)) as session:
-                tasks = [
-                    self.download_dataset(acc, executor, session, skip_existing) for
-                    acc in
-                    gse_accessions]
-                datasets = await tqdm_gather(*tasks,
-                                             return_exceptions=ignore_failures) if self.show_progress else await asyncio.gather(
-                    *tasks, return_exceptions=ignore_failures)
-        if not ignore_failures:
-            return datasets
+        logger.info(
+            "Downloading %d datasets using %d big dataset parser workers and %d small dataset parser workers",
+            len(accessions_to_process),
+            self.big_dataset_parser_workers,
+            self.small_dataset_parser_workers,
+        )
+        loop = asyncio.get_running_loop()
+        with (ProcessPoolExecutor(self.big_dataset_parser_workers,
+                                  initializer=configure_log_file) as big_dataset_executor,
+              ProcessPoolExecutor(self.small_dataset_parser_workers,
+                                  initializer=configure_log_file) as small_dataset_executor):
+            async with aiohttp.ClientSession(
+                    raise_for_status=True,
+                    timeout=aiohttp.ClientTimeout(total=None, sock_connect=10, sock_read=10),
+                    connector=aiohttp.TCPConnector(limit=self.config.max_ncbi_connections),
+            ) as session, GSEArchiveParser(loop, big_dataset_executor, small_dataset_executor, self.chunk_size,
+                                           self.big_gzip_threshold_mb) as parser:
+                downloader = GSEArchiveDownloader(self.config, session, dont_redownload)
+                pipeline_tasks = [
+                    self._process_single_dataset(acc, downloader, parser)
+                    for acc in accessions_to_process
+                ]
+                return await self._gather(pipeline_tasks, return_exceptions=ignore_failures)
 
-        for gse in datasets:
-            if isinstance(gse, Exception):
-                logger.error(f"Failed to download dataset: {gse}")
-        return [gse for gse in datasets if not isinstance(gse, Exception)]
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     import argparse
 
     configure_log_file()
 
     parser = argparse.ArgumentParser(
         prog="GEOmetadb backfiller",
-        description="Downloads GEO datasets that were last updated in the given date range and saves them to the geometadb database."
+        description="Downloads GEO datasets that were last updated in the given date range and saves them to the geometadb database.",
     )
     parser.add_argument(
-        'start_date',
-        type=lambda s: datetime.datetime.strptime(s, '%Y-%m-%d'),
-        help='Start date for the date range to download datasets from (inclusive).'
+        "start_date",
+        type=lambda s: datetime.datetime.strptime(s, "%Y-%m-%d"),
+        help="Start date for the date range to download datasets from (inclusive).",
     )
     parser.add_argument(
-        'end_date',
-        type=lambda s: datetime.datetime.strptime(s, '%Y-%m-%d'),
+        "end_date",
+        type=lambda s: datetime.datetime.strptime(s, "%Y-%m-%d"),
         default=datetime.datetime.now(),
-        help='End date for the date range to download datasets from (inclusive). Defaults to today.',
-        nargs='?'
+        help="End date for the date range to download datasets from (inclusive). Defaults to today.",
+        nargs="?",
     )
-    parser.add_argument('--skip-existing', action='store_true',
-                        help='If True, datasets that already exist in the database will not be re-downloaded.')
-    parser.add_argument('--ignore-failures', action='store_true',
-                        help='If True, datasets that fail to download will be ignored.')
+    parser.add_argument(
+        "--skip-existing",
+        action="store_true",
+        help="If True, datasets that already exist in the database will be skipped",
+    )
+    parser.add_argument(
+        "--ignore-failures",
+        action="store_true",
+        help="If True, datasets that fail to download or parse will be ignored.",
+    )
+    parser.add_argument(
+        "--dont-redownload",
+        action="store_true",
+        help="If True, archives that have already been downloaded will not be re-downloaded. However, they will be parsed and saved.",
+    )
     args = parser.parse_args()
+    logger.setLevel(logging.WARNING)
 
     config = Config(test=False)
     gse_repository = GSERepository(config.geometadb_path)
-    geometadb_update_job_repository = GEOmetadbUpdateJobRepository(config.geometadb_path)
-    backfiller = GEOmetadbBackfiller(config, gse_repository, geometadb_update_job_repository)
-    backfiller.backfill_geometadb(args.start_date, args.end_date, args.skip_existing, args.ignore_failures)
-    print("Done")
+    gsm_repository = GSMRepository(config.geometadb_path)
+    backfiller = GEOmetadbBackfiller(config, gse_repository, gsm_repository)
+    backfiller.backfill_geometadb(args.start_date, args.end_date, args.skip_existing, args.ignore_failures,
+                                  args.dont_redownload)

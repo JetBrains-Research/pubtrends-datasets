@@ -18,4 +18,3 @@ class GSE_GSM:
 
     gse: str = field(metadata={"sa": Column(Text, ForeignKey('gse.gse'))})
     gsm: str = field(metadata={"sa": Column(Text, ForeignKey('gsm.gsm'))})
-

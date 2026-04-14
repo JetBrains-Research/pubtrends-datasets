@@ -53,8 +53,5 @@ if [ ! -d "$dataset_path" ]; then
 fi
 sed -i "s|^dataset_download_folder\\s*=\\s*.*|dataset_download_folder = ${dataset_path}|" config.properties
 
-echo '6. Applying database migrations'
-uv run flask --app src.app.app db upgrade
-
 echo 'Setup finished'
 echo 'Please copy the config.properties file to ~/.pubtrends-datasets before running the app'

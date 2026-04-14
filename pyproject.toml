@@ -3,7 +3,7 @@ name = "pubtrends-datasets"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 dependencies = [
     "aiofiles>=25.1.0",
     "aiogzip>=1.1.0",
@@ -13,13 +13,16 @@ dependencies = [
     "dacite==1.8.1",
     "flasgger==0.9.7.1",
     "flask==3.1.2",
-    "flask-migrate>=4.1.0",
     "geoparse==2.0.4",
     "pandas-stubs==2.3.3.251219",
     "parameterized==0.9.0",
     "pip==25.3",
+    "numpy==2.2.2",
     "requests==2.32.5",
     "sqlacodegen>=3.2.0",
     "tenacity>=9.1.2",
     "tqdm>=4.67.1",
+    "spacy>=3.8.11",
+    "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+    "flask-sqlalchemy>=3.1.1",
 ]

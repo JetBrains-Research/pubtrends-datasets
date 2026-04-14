@@ -3,8 +3,10 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
+from sqlalchemy import Column, Index, PrimaryKeyConstraint, REAL, Text
+
 from src.db.models.mapper_registry import mapper_registry
-from sqlalchemy import Column, Index, PrimaryKeyConstraint, REAL, Text, Table
+
 
 @mapper_registry.mapped
 @dataclass
