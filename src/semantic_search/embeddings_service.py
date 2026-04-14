@@ -6,12 +6,14 @@ import tenacity
 
 logger = logging.getLogger(__name__)
 
+
 class EmbeddingsServiceError(Exception):
     """Exception raised when the embeddings service is unavailable or returns an error."""
     pass
 
 
-@tenacity.retry(wait=tenacity.wait_exponential(max=10), stop=tenacity.stop_after_attempt(3), before_sleep=tenacity.before_sleep_log(logger, logging.WARNING), reraise=True)
+@tenacity.retry(wait=tenacity.wait_exponential(max=10), stop=tenacity.stop_after_attempt(3),
+                before_sleep=tenacity.before_sleep_log(logger, logging.WARNING), reraise=True)
 def fetch_texts_embedding_batch(texts, embeddings_service_url):
     logger.debug('Fetch texts embeddings')
     try:
@@ -47,6 +49,7 @@ def fetch_texts_embedding_batch(texts, embeddings_service_url):
     except Exception as e:
         logger.exception(f'Failed to fetch texts embeddings')
         raise e
+
 
 def fetch_texts_embedding(texts, embeddings_service_url, batch_size=64):
     texts_batches = []

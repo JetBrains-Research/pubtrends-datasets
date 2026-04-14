@@ -63,9 +63,9 @@ class TestELinkDatasetLinker(unittest.TestCase):
         )
 
     def _mock_post_routes(
-        self,
-        elink: Mock | Exception | type[Exception],
-        efetch: Mock | Exception | type[Exception]
+            self,
+            elink: Mock | Exception | type[Exception],
+            efetch: Mock | Exception | type[Exception]
     ) -> None:
         """
         Routes mocked POST requests by URL to a response or an exception.

@@ -77,7 +77,7 @@ class GSEArchiveParser:
         batch: list[tuple[DownloadedArchive, asyncio.Future[ParsedDataset]]] = []
         async with self.lock:
             time_since_last_flush = time.time() - self.last_flush_time
-            if not(time_since_last_flush > 10 or len(self.batch) > self.chunk_size):
+            if not (time_since_last_flush > 10 or len(self.batch) > self.chunk_size):
                 return
             if len(self.batch) == 0:
                 return

@@ -4,8 +4,6 @@ from typing import Optional, List, Dict
 
 from sqlalchemy import Column, Index, PrimaryKeyConstraint, REAL, Text
 
-from sqlalchemy import Column, Index, PrimaryKeyConstraint, REAL, Text
-
 from src.db.models.mapper_registry import mapper_registry
 
 
@@ -54,8 +52,7 @@ class GSM:
     channel_count: Optional[float] = field(default=None, metadata={"sa": Column(REAL)})
 
     def __str__(self):
-        lines = []
-        lines.append(f"Sample: {self.title}")
+        lines = [f"Sample: {self.title}"]
         if self.source_name_ch1:
             lines.append(f"Source: {self.source_name_ch1}")
         if self.organism_ch1:
@@ -68,6 +65,7 @@ class GSM:
                 lines.append(f"{characteristic}: {value}")
 
         return "\n".join(lines)
+
 
 def _parse_characteristics(characteristics: List[str]) -> Dict[str, str]:
     """

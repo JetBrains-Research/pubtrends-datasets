@@ -7,9 +7,8 @@ import tenacity
 from dacite import from_dict
 
 from src.db.loaders.geoparse_to_geometadb import format_geoparse_gse_metadata
-from src.db.models.gse import GSE
 from src.db.loaders.gse_loader import GSELoader
-from src.db.repositories.gse_repository import GSERepository
+from src.db.models.gse import GSE
 from src.exception.geo_error import GEOError
 
 logger = logging.getLogger(__name__)
@@ -25,7 +24,8 @@ class NCBIGSELoader(GSELoader):
         gses = [self.download_geo_dataset(accession) for accession in gse_accessions]
         return gses
 
-    @tenacity.retry(wait=tenacity.wait_exponential(max=10), stop=tenacity.stop_after_attempt(3), before_sleep=tenacity.before_sleep_log(logger, logging.WARNING), reraise=True)
+    @tenacity.retry(wait=tenacity.wait_exponential(max=10), stop=tenacity.stop_after_attempt(3),
+                    before_sleep=tenacity.before_sleep_log(logger, logging.WARNING), reraise=True)
     def download_geo_dataset(self, accession: str) -> GSE:
         """
         Downloads the GEO dataset with the given accession.
