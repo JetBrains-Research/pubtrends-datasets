@@ -47,6 +47,7 @@ class Config:
         self.max_tokens_per_chunk = self._parse_nonnegative_int(params, 'max_tokens_per_chunk')
         self.overlap_sentences = self._parse_nonnegative_int(params, 'overlap_sentences')
         self.chunking_workers = self._parse_positive_int(params, 'chunking_workers')
+        self.embeddings_batch_size = self._parse_positive_int(params, 'embeddings_batch_size')
 
     @staticmethod
     def _parse_positive_int(params, key):

@@ -89,6 +89,7 @@ class SemanticSearcher:
         self.overlap_sentences = config.overlap_sentences
         self.embeddings_service_url = config.embeddings_service_url
         self.chunking_workers = config.chunking_workers
+        self.embeddings_batch_size = config.embeddings_batch_size
 
     def _get_chunks(self, text: str) -> List[str]:
         return get_chunks(text, self.max_tokens_per_chunk, self.overlap_sentences)
@@ -125,7 +126,7 @@ class SemanticSearcher:
         chunks_with_gse = self.chunk_gses(gses_with_gsms)
 
         embedding_start_time = time.perf_counter()
-        embeddings = fetch_texts_embedding([chunk for chunk, _ in chunks_with_gse], self.embeddings_service_url)
+        embeddings = fetch_texts_embedding([chunk for chunk, _ in chunks_with_gse], self.embeddings_service_url, batch_size=self.embeddings_batch_size)
         embedding_end_time = time.perf_counter()
         logger.info(
             f"Embeddings fetched in {embedding_end_time - embedding_start_time} seconds for {len(chunks_with_gse)} chunks")

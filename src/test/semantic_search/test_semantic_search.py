@@ -153,7 +153,7 @@ class TestSemanticSearch(unittest.TestCase):
     ])
     def test_rank_by_relevance(self, query: str, embeddings_if_word_present: Dict[str, List[float]],
                                expected_result: List[GSE]):
-        self.fetch_texts_embedding.side_effect = lambda texts, url: TestSemanticSearch._mock_fetch_texts_embedding(
+        self.fetch_texts_embedding.side_effect = lambda texts, url, batch_size=64: TestSemanticSearch._mock_fetch_texts_embedding(
             texts, embeddings_if_word_present)
         result = self.semantic_search.rank_by_relevance(GSEs_TO_SEARCH, query)
         # Once for the query and another time for GSEs

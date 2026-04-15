@@ -51,7 +51,7 @@ def fetch_texts_embedding_batch(texts, embeddings_service_url):
         raise e
 
 
-def fetch_texts_embedding(texts, embeddings_service_url, batch_size=64):
+def fetch_texts_embedding(texts, embeddings_service_url, batch_size=256):
     texts_batches = []
     for i in range(0, len(texts), batch_size):
         texts_batches.append(texts[i:i + batch_size])
