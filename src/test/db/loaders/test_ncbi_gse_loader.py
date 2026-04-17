@@ -17,7 +17,7 @@ class TestNCBIGSELoader(unittest.TestCase):
         self.mock_session = Mock()
         self.test_config = Config(test=True)
         self.repository = Mock()
-        self.loader = NCBIGSELoader(self.mock_session, self.repository)
+        self.loader = NCBIGSELoader(self.mock_session)
 
     @staticmethod
     def _make_ok_response(gse_accession: str):
@@ -42,9 +42,7 @@ class TestNCBIGSELoader(unittest.TestCase):
         self.assertListEqual(gse_ids, expected_ids)
 
         self.assertEqual(self.mock_session.get.call_count, len(gse_accessions))
-        self.assertEqual(self.repository.save_gses.call_count, 1)
-        save_args, _ = self.repository.save_gses.call_args
-        self.assertEqual(len(save_args[0]), len(gse_accessions))
+        self.repository.save_gses.assert_not_called()
 
     def test_load_gses_http_error(self):
         self.mock_session.get.return_value = self._make_error_response()
@@ -52,7 +50,7 @@ class TestNCBIGSELoader(unittest.TestCase):
         with self.assertRaises(GEOError):
             self.loader.get_gses(["GSE12345"])
 
-        self.mock_session.get.assert_called_once()
+        self.assertGreaterEqual(self.mock_session.get.call_count, 1)
 
     def test_load_gses_connection_failure(self):
         req_exc = requests.RequestException()
@@ -62,4 +60,4 @@ class TestNCBIGSELoader(unittest.TestCase):
         with self.assertRaises(GEOError):
             self.loader.get_gses(["GSE99999"])
 
-        self.mock_session.get.assert_called_once()
+        self.assertGreaterEqual(self.mock_session.get.call_count, 1)

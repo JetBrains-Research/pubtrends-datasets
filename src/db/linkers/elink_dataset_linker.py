@@ -1,13 +1,19 @@
+import logging
 from typing import List, Dict
 import re
 import requests
+import tenacity
+
 from src.db.linkers.paper_dataset_linker import PaperDatasetLinker
 from src.exception.entrez_error import EntrezError
+
+logger = logging.getLogger(__name__)
 
 
 class ELinkDatasetLinker(PaperDatasetLinker):
     ELINK_REQUEST_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi"
     EFETCH_REQUEST_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
+    NUMBER_OF_RETRIES = 3
 
     def __init__(self, http_session: requests.Session):
         self.http_session = http_session
@@ -40,10 +46,13 @@ class ELinkDatasetLinker(PaperDatasetLinker):
                 result[pubmed_id] = accessions
             except Exception:
                 # If a single ID fails, store empty list and continue
+                logging.exception(f"Error linking PubMed ID {pubmed_id}")
                 result[pubmed_id] = []
 
         return result
 
+    @tenacity.retry(wait=tenacity.wait_exponential(max=10), stop=tenacity.stop_after_attempt(NUMBER_OF_RETRIES),
+                    before_sleep=tenacity.before_sleep_log(logger, logging.WARNING), reraise=True)
     def _fetch_geo_ids(self, pubmed_ids: List[str]) -> List[str]:
         """
         Fetches GEO dataset ids for papers with the specified PubMed IDs.
@@ -84,6 +93,8 @@ class ELinkDatasetLinker(PaperDatasetLinker):
         except requests.RequestException:
             raise EntrezError("Network error during ELink API call")
 
+    @tenacity.retry(wait=tenacity.wait_exponential(max=10), stop=tenacity.stop_after_attempt(NUMBER_OF_RETRIES),
+                    before_sleep=tenacity.before_sleep_log(logger, logging.WARNING), reraise=True)
     def _fetch_geo_accessions(self, geo_ids: List[str]) -> List[str]:
         """
         Fetches GEO accessions for the given GEO IDs from the NCBI E-Utilities.
@@ -92,9 +103,10 @@ class ELinkDatasetLinker(PaperDatasetLinker):
         :return: List of GEO accessions in the same order.
         """
         try:
-            response = self.http_session.get(
+            response = self.http_session.post(
                 ELinkDatasetLinker.EFETCH_REQUEST_URL,
-                params={"db": "gds", "id": ",".join(geo_ids)},
+                params={"db": "gds"},
+                data={"id": ",".join(geo_ids)}
             )
             response.raise_for_status()
             geo_summaries = response.text

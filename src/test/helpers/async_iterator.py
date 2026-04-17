@@ -1,3 +1,4 @@
+# Needed for Mocking aiohttp.ClientResponse.content.iter_chunked used src.db.backfill_geometadb
 class AsyncIterator:
     def __init__(self, seq):
         self.iter = iter(seq)

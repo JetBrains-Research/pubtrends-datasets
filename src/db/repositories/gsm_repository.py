@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import List
+from typing import List, Dict
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -56,6 +56,32 @@ class GSMRepository(GSMLoader):
             with Session(self.engine) as session:
                 statement = select(GSM).where(GSM.gsm.in_(gsm_accessions))
                 return list(session.scalars(statement).all())
+        except SQLAlchemyError as e:
+            logger.exception("Failed to load GEO samples from geometadb:")
+            raise e
+
+    def get_gse_gsm_mapping(self, gse_accesions: List[str]) -> Dict[str, List[GSM]]:
+        """
+        Returns a mapping of GSE accessions to their associated GSM samples.
+        """
+        if not gse_accesions:
+            return {}
+
+        try:
+            with Session(self.engine) as session:
+                statement_gse_gsm_map = select(GSE_GSM).where(GSE_GSM.gse.in_(gse_accesions))
+                gse_gsm_map = {}
+                for gse_gsm in session.scalars(statement_gse_gsm_map).all():
+                    gse_gsm_map.setdefault(gse_gsm.gse, []).append(gse_gsm.gsm)
+
+                statement_gsms = select(GSM).join(GSE_GSM).where(GSE_GSM.gse.in_(gse_accesions))
+                gsms = {gsm.gsm: gsm for gsm in session.scalars(statement_gsms).all()}
+
+                for gse_acc in gse_gsm_map:
+                    gse_gsm_map[gse_acc] = [gsms[gsm_acc] for gsm_acc in gse_gsm_map[gse_acc]]
+
+                return gse_gsm_map
+
         except SQLAlchemyError as e:
             logger.exception("Failed to load GEO samples from geometadb:")
             raise e

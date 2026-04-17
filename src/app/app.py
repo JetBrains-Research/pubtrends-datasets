@@ -1,5 +1,4 @@
 """Flask application for GEOmetadb dataset queries."""
-
 import json
 from dataclasses import asdict
 
@@ -12,17 +11,21 @@ from src.app.swagger_template import swagger_template
 from src.config.config import Config
 from src.config.configure_log_file import configure_log_file
 from src.db.linkers.chained_dataset_linker import ChainedDatasetLinker
-from src.db.loaders.chained_gse_loader import ChainedGSELoader
-from src.db.loaders.chained_gsm_loader import ChainedGSMLoader
 from src.db.linkers.elink_dataset_linker import ELinkDatasetLinker
 from src.db.linkers.europepmc_dataset_linker import EuropePMCDatasetLinker
+from src.db.loaders.GEOmetadbBackfillerGSELoader import GEOmetadbBackfillerGSELoader
+from src.db.loaders.chained_gse_loader import ChainedGSELoader
+from src.db.loaders.chained_gsm_loader import ChainedGSMLoader
+from src.db.loaders.ncbi_gse_loader import NCBIGSELoader
+from src.db.loaders.ncbi_gsm_loader import NCBIGSMLoader
+from src.db.models import mapper_registry
 from src.db.models.gse import GSE_DTO, GSE
+from src.db.models.gse_with_gsms import GSEWithGSMs
 from src.db.models.gsm import GSM
 from src.db.repositories.gse_repository import GSERepository
 from src.db.repositories.gsm_repository import GSMRepository
-from src.db.models.mapper_registry import mapper_registry
-from src.db.loaders.ncbi_gse_loader import NCBIGSELoader
-from src.db.loaders.ncbi_gsm_loader import NCBIGSMLoader
+from src.semantic_search.embeddings_service import EmbeddingsServiceError
+from src.semantic_search.semantic_search import SemanticSearcher
 
 app = Flask(__name__)
 swagger = Swagger(app, template=swagger_template)
@@ -34,6 +37,7 @@ db.init_app(app)
 
 gse_repository = GSERepository(CONFIG.geometadb_path)
 gsm_repository = GSMRepository(CONFIG.geometadb_path)
+semantic_search = SemanticSearcher(CONFIG)
 
 configure_log_file()
 
@@ -44,6 +48,12 @@ def log_request(r):
     return f'addr:{r.remote_addr} args:{json.dumps(r.args)}'
 
 
+def create_chained_linker(http_session):
+    europepmc_dataset_linker = EuropePMCDatasetLinker(http_session)
+    elink_dataset_linker = ELinkDatasetLinker(http_session)
+    return ChainedDatasetLinker(elink_dataset_linker, europepmc_dataset_linker)
+
+
 def _link_pubmed_to_gse(pubmed_ids: list[str], http_session) -> dict[str, list[str]]:
     """
     Helper function to link PubMed IDs to GSE accessions.
@@ -52,9 +62,7 @@ def _link_pubmed_to_gse(pubmed_ids: list[str], http_session) -> dict[str, list[s
     :param http_session: HTTP session to use for requests
     :return: Dictionary mapping PubMed IDs to GSE accessions
     """
-    europepmc_dataset_linker = EuropePMCDatasetLinker(http_session)
-    elink_dataset_linker = ELinkDatasetLinker(http_session)
-    dataset_linker = ChainedDatasetLinker(elink_dataset_linker, europepmc_dataset_linker)
+    dataset_linker = create_chained_linker(http_session)
 
     pubmed_to_gse = dataset_linker.link_to_datasets_mapped(pubmed_ids)
 
@@ -76,7 +84,8 @@ def _get_gse_details(gse_accessions: list[str], http_session) -> list[GSE]:
     """
     chained_loader = ChainedGSELoader(
         gse_repository,
-        NCBIGSELoader(http_session, gse_repository)
+        GEOmetadbBackfillerGSELoader(CONFIG, gse_repository, gsm_repository),
+        NCBIGSELoader(http_session)
     )
     return chained_loader.get_gses(gse_accessions)
 
@@ -319,6 +328,122 @@ def get_gsm_details():
 
     except Exception as e:
         logger.exception(f'/gsm-details exception {e}')
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/relevant_datasets', methods=['POST'])
+def get_relevant_datasets():
+    """
+    POST endpoint to retrieve most relevant datasets for a query and PubMed IDs.
+    ---
+    summary: Get relevant GSE datasets with relevance scores
+    description: |
+      Retrieves Gene Expression Omnibus Series (GSE) datasets linked to the provided PubMed IDs,
+      then ranks them by cosine similarity between the query embedding and dataset text
+      (title, summary, overall design).
+      Endpoint path: /relevant_datasets
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            pubmed_ids:
+              type: array
+              items:
+                type: string
+              example:
+                - "30530648"
+                - "31018141"
+            query:
+              type: string
+              example: "mouse brain"
+          required:
+            - pubmed_ids
+            - query
+          example:
+            pubmed_ids:
+              - "30530648"
+              - "31018141"
+              - "41620577"
+            query: "mouse brain"
+    responses:
+      200:
+        description: Successful response with list of dataset IDs and relevance scores
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              gse_accession:
+                type: string
+                description: GSE accession number
+              score:
+                type: number
+                format: float
+                description: Relevance score (cosine similarity)
+        examples:
+          application/json:
+            - dataset_id: "GSE137444"
+              score: 0.8123
+            - dataset_id: "GSE127884"
+              score: 0.7031
+      400:
+        description: Bad request - missing or invalid inputs
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+        examples:
+          application/json:
+            error: "pubmed_ids must be a non-empty list"
+      503:
+        description: Service Unavailable - sentence-transformer server is not available
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+        examples:
+          application/json:
+            error: "Sentence-transformer server is not available at http://localhost:8080. Please ensure the embeddings service is running."
+      500:
+        description: Internal server error
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+    """
+    logger.info(f'/relevant_datasets {log_request(request)}')
+    payload = request.get_json(silent=True) or {}
+    pubmed_ids = payload.get('pubmed_ids')
+    query = payload.get('query')
+
+    if not isinstance(pubmed_ids, list) or not pubmed_ids:
+        return jsonify({"error": "pubmed_ids must be a non-empty list"}), 400
+    if not isinstance(query, str) or not query.strip():
+        return jsonify({"error": "query must be a non-empty string"}), 400
+
+    pubmed_ids = [str(pid).strip() for pid in pubmed_ids if str(pid).strip()]
+    if not pubmed_ids:
+        return jsonify({"error": "At least one valid PubMed ID is required"}), 400
+
+    try:
+        with requests.Session() as http_session:
+            dataset_linker = create_chained_linker(http_session)
+            gse_accessions = dataset_linker.link_to_datasets(pubmed_ids)
+            gses = _get_gse_details(gse_accessions, http_session)
+            gse_gsm_map = gsm_repository.get_gse_gsm_mapping(gse_accessions)
+            gses_with_gsms = [GSEWithGSMs(gse, gse_gsm_map.get(gse.gse, [])) for gse in gses]
+        return jsonify(semantic_search.rank_by_relevance(gses_with_gsms, query))
+    except EmbeddingsServiceError as e:
+        logger.error(f'/relevant_datasets embeddings service error: {e}')
+        return jsonify({"error": str(e)}), 503
+    except Exception as e:
+        logger.exception(f'/relevant_datasets exception {e}')
         return jsonify({"error": str(e)}), 500
 
 

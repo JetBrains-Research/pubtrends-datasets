@@ -89,6 +89,21 @@ swagger_template = {
                     "example": "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE12nnn/GSE12345/suppl/"
                 }
             }
+        },
+        "ScoredGSE": {
+            "type": "object",
+            "properties": {
+                "gse": {
+                    "$ref": "#/definitions/GSE"
+                },
+                "score": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Cosine similarity score between query and dataset text",
+                    "example": 0.8123
+                }
+            },
+            "required": ["gse", "score"]
         }
     }
 }

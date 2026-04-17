@@ -1,5 +1,4 @@
 """Gene Expression Omnibus Series (GSE) data model."""
-
 from dataclasses import dataclass, field
 from typing import Optional, List
 
@@ -10,6 +9,8 @@ from src.db.models.gse_gsm import GSE_GSM
 from src.db.models.mapper_registry import mapper_registry
 
 from sqlalchemy import Index, Integer, PrimaryKeyConstraint, REAL, Text, Column
+
+SUPERSERIES_SUMMARY = "This SuperSeries is composed of the SubSeries listed below."
 
 
 @mapper_registry.mapped
@@ -46,6 +47,9 @@ class GSE:
                                            metadata={"sa": relationship("GSE_GSM", viewonly=True)})
     gsm_ids: AssociationProxy[List[str]] = field(default_factory=list,
                                                  metadata={"sa": association_proxy("gse_gsm_links", "gsm")})
+
+    def is_superseries(self):
+        return self.summary == SUPERSERIES_SUMMARY
 
 
 @dataclass()

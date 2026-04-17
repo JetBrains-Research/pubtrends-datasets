@@ -39,7 +39,6 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         self.mock_parser.return_value.__aenter__ = AsyncMock(return_value=self.mock_parser_instance)
         self.mock_parser.return_value.__aexit__ = AsyncMock(return_value=None)
 
-
     @staticmethod
     def _create_mock_gse(accession: str) -> GSE:
         """Create a mock GSE object."""

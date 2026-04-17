@@ -59,7 +59,8 @@ class EuropePMCDatasetLinker(PaperDatasetLinker):
             # Merge batch results into overall result
             for pubmed_id, accessions in batch_mapping.items():
                 if pubmed_id in result:
-                    result[pubmed_id].extend(accessions)
+                    accessions_gse_only = filter(lambda acc: acc.startswith("GSE"), accessions)
+                    result[pubmed_id].extend(accessions_gse_only)
 
         # Deduplicate accessions for each PubMed ID
         for pubmed_id in result:
