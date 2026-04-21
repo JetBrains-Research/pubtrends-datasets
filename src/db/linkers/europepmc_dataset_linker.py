@@ -1,7 +1,12 @@
 from typing import List, Dict
 import requests
+from pyrate_limiter import Duration
+from pyrate_limiter.limiter_factory import create_inmemory_limiter
+
 from src.exception.europepmc_error import EuropePMCError
 from src.db.linkers.paper_dataset_linker import PaperDatasetLinker
+
+europepmc_rate_limiter = create_inmemory_limiter(10, Duration.SECOND)
 
 
 class EuropePMCDatasetLinker(PaperDatasetLinker):
@@ -68,6 +73,7 @@ class EuropePMCDatasetLinker(PaperDatasetLinker):
 
         return result
 
+    @europepmc_rate_limiter.as_decorator(name="EuropePMC", weight=1)
     def _fetch_geo_accession_batch_mapped(self, pubmed_ids: List[str]) -> Dict[str, List[str]]:
         """
         Fetches GEO references in a list of papers (max 8 papers) from EuropePMC's

@@ -1,10 +1,9 @@
 import logging
-from typing import List, Dict
 import re
+from typing import List, Dict
 
 import requests
 import tenacity
-from pyrate_limiter import Limiter, Rate, Duration
 from pyrate_limiter.limiter_factory import create_inmemory_limiter
 
 from src.db.linkers.paper_dataset_linker import PaperDatasetLinker
