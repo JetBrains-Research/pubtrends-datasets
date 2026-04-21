@@ -3,12 +3,13 @@ from dataclasses import dataclass, field
 from typing import Optional, List
 
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, column_property
 
 from src.db.models.gse_gsm import GSE_GSM
+from src.db.models.gsm import GSM
 from src.db.models.mapper_registry import mapper_registry
 
-from sqlalchemy import Index, Integer, PrimaryKeyConstraint, REAL, Text, Column
+from sqlalchemy import Index, Integer, PrimaryKeyConstraint, REAL, Text, Column, select, union, func, literal_column
 
 SUPERSERIES_SUMMARY = "This SuperSeries is composed of the SubSeries listed below."
 
@@ -45,11 +46,28 @@ class GSE:
 
     gse_gsm_links: List["GSE_GSM"] = field(default_factory=list,
                                            metadata={"sa": relationship("GSE_GSM", viewonly=True)})
-    gsm_ids: AssociationProxy[List[str]] = field(default_factory=list,
-                                                 metadata={"sa": association_proxy("gse_gsm_links", "gsm")})
+    gsm_ids: AssociationProxy[List[str]] = field(default_factory=list, metadata={
+        "sa": association_proxy("gse_gsm_links", "gsm")
+    })
 
-    def is_superseries(self):
-        return self.summary == SUPERSERIES_SUMMARY
+    _organisms = column_property(
+        select(func.group_concat(Column("organism")))
+        .select_from(
+            union(
+                select(GSM.organism_ch1.label("organism"))
+                .join(GSE_GSM)
+                .where(GSE_GSM.gse == literal_column("gse.gse")),
+                select(GSM.organism_ch2.label("organism"))
+                .join(GSE_GSM)
+                .where(GSE_GSM.gse == literal_column("gse.gse"))
+            ).subquery()
+        )
+        .scalar_subquery()
+    )
+
+    @property
+    def organisms(self):
+        return self._organisms.split(",")
 
 
 @dataclass()
@@ -73,6 +91,7 @@ class GSE_DTO:
     contact: Optional[str]
     supplementary_file: Optional[str]
     gsm_ids: List[str]
+    organisms: List[str]
 
     def __init__(self, gse: GSE):
         self.ID = gse.ID
@@ -94,3 +113,4 @@ class GSE_DTO:
         self.contact = gse.contact
         self.supplementary_file = gse.supplementary_file
         self.gsm_ids = list(gse.gsm_ids)
+        self.organisms = gse.organisms
