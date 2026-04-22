@@ -332,7 +332,7 @@ def get_gsm_details():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/relevant_datasets', methods=['POST'])
+@app.route('/relevant-datasets', methods=['POST'])
 def get_relevant_datasets():
     """
     POST endpoint to retrieve most relevant datasets for a query and GSE accession numbers.
@@ -342,7 +342,7 @@ def get_relevant_datasets():
       Retrieves Gene Expression Omnibus Series (GSE) datasets for the provided GSE accession
       numbers, then ranks them by cosine similarity between the query embedding and dataset text
       (title, summary, overall design).
-      Endpoint path: /relevant_datasets
+      Endpoint path: /relevant-datasets
     parameters:
       - name: body
         in: body
@@ -418,7 +418,7 @@ def get_relevant_datasets():
             error:
               type: string
     """
-    logger.info(f'/relevant_datasets {log_request(request)}')
+    logger.info(f'/relevant-datasets {log_request(request)}')
     payload = request.get_json(silent=True) or {}
     gse_ids = payload.get('gse_ids')
     query = payload.get('query')
@@ -439,10 +439,10 @@ def get_relevant_datasets():
             gses_with_gsms = [GSEWithGSMs(gse, gse_gsm_map.get(gse.gse, [])) for gse in gses]
         return jsonify(semantic_search.rank_by_relevance(gses_with_gsms, query))
     except EmbeddingsServiceError as e:
-        logger.error(f'/relevant_datasets embeddings service error: {e}')
+        logger.error(f'/relevant-datasets embeddings service error: {e}')
         return jsonify({"error": str(e)}), 503
     except Exception as e:
-        logger.exception(f'/relevant_datasets exception {e}')
+        logger.exception(f'/relevant-datasets exception {e}')
         return jsonify({"error": str(e)}), 500
 
 
