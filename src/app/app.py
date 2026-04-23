@@ -3,6 +3,7 @@ import json
 import re
 from dataclasses import asdict
 
+import numpy as np
 import requests
 from flasgger import Swagger
 from flask import Flask, request, jsonify
@@ -515,6 +516,115 @@ def get_relevant_datasets():
         return jsonify({"error": str(e)}), 503
     except Exception as e:
         logger.exception(f'/relevant-datasets exception {e}')
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/relevant-datasets-by-embedding', methods=['POST'])
+def get_relevant_datasets_by_embedding():
+    """
+    POST endpoint to rank GSE datasets by similarity to a user-provided embedding.
+    ---
+    summary: Rank GSE datasets by similarity to a provided embedding
+    description: |
+      Retrieves Gene Expression Omnibus Series (GSE) datasets for the provided GSE accession numbers,
+      then ranks them by cosine similarity between the user-supplied embedding and dataset text
+      (title, summary, overall design).
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            gse_accessions:
+              type: array
+              items:
+                type: string
+              example:
+                - "GSE116672"
+                - "GSE127884"
+            embedding:
+              type: array
+              items:
+                type: number
+                format: float
+              example: [0.12, -0.34, 0.56]
+          required:
+            - gse_accessions
+            - embedding
+    responses:
+      200:
+        description: Successful response with list of dataset IDs and similarity scores
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              gse_accession:
+                type: string
+                description: GSE accession number
+              score:
+                type: number
+                format: float
+                description: Similarity score (cosine similarity)
+        examples:
+          application/json:
+            - gse_accession: "GSE127884"
+              score: 0.91
+            - gse_accession: "GSE116672"
+              score: 0.72
+      400:
+        description: Bad request - missing or invalid inputs
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+        examples:
+          application/json:
+            error: "gse_accessions must be a non-empty list"
+      503:
+        description: Service Unavailable - sentence-transformer server is not available
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+      500:
+        description: Internal server error
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+    """
+    logger.info(f'/relevant-datasets-by-embedding {log_request(request)}')
+    payload = request.get_json(silent=True) or {}
+    gse_accessions = payload.get('gse_accessions')
+    embedding = payload.get('embedding')
+
+    if not isinstance(gse_accessions, list) or not gse_accessions:
+        return jsonify({"error": "gse_accessions must be a non-empty list"}), 400
+    gse_accessions = [str(acc).strip() for acc in gse_accessions if str(acc).strip()]
+    if not gse_accessions:
+        return jsonify({"error": "At least one valid GSE accession is required"}), 400
+
+    if not isinstance(embedding, list) or not embedding:
+        return jsonify({"error": "embedding must be a non-empty list of numbers"}), 400
+    if not all(isinstance(v, (int, float)) for v in embedding):
+        return jsonify({"error": "embedding must contain only numbers"}), 400
+
+    try:
+        with requests.Session() as http_session:
+            gses = _get_gse_details(gse_accessions, http_session)
+            gse_gsm_map = gsm_repository.get_gse_gsm_mapping(gse_accessions)
+            gses_with_gsms = [GSEWithGSMs(gse, gse_gsm_map.get(gse.gse, [])) for gse in gses]
+        return jsonify(semantic_search.rank_by_similarity(gses_with_gsms, np.array(embedding, dtype=float)))
+    except EmbeddingsServiceError as e:
+        logger.error(f'/relevant-datasets-by-embedding embeddings service error: {e}')
+        return jsonify({"error": str(e)}), 503
+    except Exception as e:
+        logger.exception(f'/relevant-datasets-by-embedding exception {e}')
         return jsonify({"error": str(e)}), 500
 
 
