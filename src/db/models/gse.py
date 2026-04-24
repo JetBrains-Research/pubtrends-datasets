@@ -67,7 +67,7 @@ class GSE:
 
     @property
     def organisms(self):
-        return self._organisms.split(",")
+        return self._organisms.split(",") if self._organisms is not None else []
 
 
 @dataclass()
