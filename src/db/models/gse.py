@@ -65,6 +65,9 @@ class GSE:
         .scalar_subquery()
     )
 
+    def is_superseries(self):
+        return self.summary == SUPERSERIES_SUMMARY
+
     @property
     def organisms(self):
         return self._organisms.split(",") if self._organisms is not None else []
