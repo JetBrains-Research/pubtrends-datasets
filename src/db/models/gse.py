@@ -1,4 +1,5 @@
 """Gene Expression Omnibus Series (GSE) data model."""
+import datetime
 from dataclasses import dataclass, field
 from typing import Optional, List
 
@@ -8,6 +9,7 @@ from sqlalchemy.orm import relationship
 from src.db.models.gse_gsm import GSE_GSM
 from src.db.models.mapper_registry import mapper_registry
 
+from dateutil import parser
 from sqlalchemy import Index, Integer, PrimaryKeyConstraint, REAL, Text, Column
 
 SUPERSERIES_SUMMARY = "This SuperSeries is composed of the SubSeries listed below."
@@ -51,8 +53,16 @@ class GSE:
     def is_superseries(self):
         return self.summary == SUPERSERIES_SUMMARY
 
+    @property
+    def publication_date(self) -> Optional[datetime.datetime]:
+        public_status_prefix = "Public on "
+        if self.status and self.status.startswith(public_status_prefix):
+            publication_date = self.status[len(public_status_prefix):]
+            return parser.parse(publication_date)
+        return parser.parse(self.last_update_date) if self.last_update_date else None
 
-@dataclass()
+
+@dataclass
 class GSE_DTO:
     ID: Optional[float]
     title: Optional[str]
@@ -73,6 +83,7 @@ class GSE_DTO:
     contact: Optional[str]
     supplementary_file: Optional[str]
     gsm_ids: List[str]
+    publication_date: Optional[str]
 
     def __init__(self, gse: GSE):
         self.ID = gse.ID
@@ -94,3 +105,4 @@ class GSE_DTO:
         self.contact = gse.contact
         self.supplementary_file = gse.supplementary_file
         self.gsm_ids = list(gse.gsm_ids)
+        self.publication_date = gse.publication_date.strftime("%Y-%m-%d") or None
