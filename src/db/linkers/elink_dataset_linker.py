@@ -1,13 +1,16 @@
 import logging
-from typing import List, Dict
 import re
+from typing import List, Dict
+
 import requests
 import tenacity
+from pyrate_limiter.limiter_factory import create_inmemory_limiter
 
 from src.db.linkers.paper_dataset_linker import PaperDatasetLinker
 from src.exception.entrez_error import EntrezError
 
 logger = logging.getLogger(__name__)
+eutilities_rate_limiter = create_inmemory_limiter()
 
 
 class ELinkDatasetLinker(PaperDatasetLinker):
@@ -53,6 +56,7 @@ class ELinkDatasetLinker(PaperDatasetLinker):
 
     @tenacity.retry(wait=tenacity.wait_exponential(max=10), stop=tenacity.stop_after_attempt(NUMBER_OF_RETRIES),
                     before_sleep=tenacity.before_sleep_log(logger, logging.WARNING), reraise=True)
+    @eutilities_rate_limiter.as_decorator(name="e-utilities", weight=1)
     def _fetch_geo_ids(self, pubmed_ids: List[str]) -> List[str]:
         """
         Fetches GEO dataset ids for papers with the specified PubMed IDs.
@@ -95,6 +99,7 @@ class ELinkDatasetLinker(PaperDatasetLinker):
 
     @tenacity.retry(wait=tenacity.wait_exponential(max=10), stop=tenacity.stop_after_attempt(NUMBER_OF_RETRIES),
                     before_sleep=tenacity.before_sleep_log(logger, logging.WARNING), reraise=True)
+    @eutilities_rate_limiter.as_decorator(name="e-utilities", weight=1)
     def _fetch_geo_accessions(self, geo_ids: List[str]) -> List[str]:
         """
         Fetches GEO accessions for the given GEO IDs from the NCBI E-Utilities.
