@@ -1,4 +1,5 @@
 """Gene Expression Omnibus Series (GSE) data model."""
+import datetime
 from dataclasses import dataclass, field
 from typing import Optional, List
 
@@ -9,6 +10,7 @@ from src.db.models.gse_gsm import GSE_GSM
 from src.db.models.gsm import GSM
 from src.db.models.mapper_registry import mapper_registry
 
+from dateutil import parser
 from sqlalchemy import Index, Integer, PrimaryKeyConstraint, REAL, Text, Column, select, union, func, literal_column
 
 SUPERSERIES_SUMMARY = "This SuperSeries is composed of the SubSeries listed below."
@@ -69,11 +71,20 @@ class GSE:
         return self.summary == SUPERSERIES_SUMMARY
 
     @property
+    def publication_date(self) -> Optional[datetime.datetime]:
+        public_status_prefix = "Public on "
+        if self.status and self.status.startswith(public_status_prefix):
+            publication_date = self.status[len(public_status_prefix):]
+            return parser.parse(publication_date)
+        return parser.parse(self.last_update_date) if self.last_update_date else None
+
+    @property
     def organisms(self):
         return self._organisms.split(",") if self._organisms is not None else []
 
 
-@dataclass()
+
+@dataclass
 class GSE_DTO:
     ID: Optional[float]
     title: Optional[str]
@@ -94,6 +105,7 @@ class GSE_DTO:
     contact: Optional[str]
     supplementary_file: Optional[str]
     gsm_ids: List[str]
+    publication_year: Optional[str]
     organisms: List[str]
 
     def __init__(self, gse: GSE):
@@ -116,4 +128,5 @@ class GSE_DTO:
         self.contact = gse.contact
         self.supplementary_file = gse.supplementary_file
         self.gsm_ids = list(gse.gsm_ids)
+        self.publication_year = gse.publication_date.strftime("%Y") or None
         self.organisms = gse.organisms
