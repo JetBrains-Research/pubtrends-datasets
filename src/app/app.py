@@ -1,5 +1,6 @@
 """Flask application for GEOmetadb dataset queries."""
 import json
+import re
 from dataclasses import asdict
 
 import requests
@@ -176,6 +177,78 @@ def get_pubmed_to_gse():
         logger.exception(f'/pubmed-to-gse exception {e}')
         return jsonify({"error": str(e)}), 500
 
+@app.route('/pubmed-to-gse-flat', methods=['POST'])
+def get_pubmed_to_gse_flat():
+    """
+    POST endpoint to retrieve a list of GSE accession numbers for PubMed IDs.
+    ---
+    summary: Get a ist of GSE accession numbers for PubMed IDs
+    description: |
+      Retrieves Gene Expression Omnibus Series (GSE) accession numbers linked to the provided PubMed IDs.
+      The response is a list of unique dataset accessions.
+      Provide JSON array of PubMed IDs in request body.
+    parameters:
+      - name: body
+        in: body
+        required: true
+        description: JSON array of PubMed IDs
+        schema:
+          type: object
+          properties:
+            pubmed_ids:
+              type: array
+              items:
+                type: string
+          example:
+            pubmed_ids: ["30530648", "31018141"]
+    responses:
+      200:
+        description: Successful response with a list of GSE accessions
+        schema:
+          type: array
+          items:
+            type: string
+        examples:
+          application/json:
+            - "GSE116672"
+            - "GSE127884"
+            - "GSE127892"
+            - "GSE127893"
+      400:
+        description: Bad request - missing or invalid PubMed IDs
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "pubmed_ids parameter is required"
+        examples:
+          application/json:
+            error: "pubmed_ids parameter is required"
+    """
+    logger.info(f'/pubmed-to-gse-flat {log_request(request)}')
+
+    data = request.get_json()
+    if not data or 'pubmed_ids' not in data:
+        logger.error(f'/pubmed-to-gse-flat error {log_request(request)}')
+        return jsonify({"error": "pubmed_ids parameter is required"}), 400
+    pubmed_ids = data['pubmed_ids']
+    if not isinstance(pubmed_ids, list):
+        return jsonify({"error": "pubmed_ids must be an array"}), 400
+    pubmed_ids = [str(pid).strip() for pid in pubmed_ids if str(pid).strip()]
+
+    if not pubmed_ids:
+        return jsonify({"error": "At least one valid PubMed ID is required"}), 400
+
+    try:
+        with requests.Session() as http_session:
+            linker = create_chained_linker(http_session)
+            gse_ids = linker.link_to_datasets(pubmed_ids)
+            return jsonify([gse_id for gse_id in gse_ids if gse_id.startswith("GSE")])
+
+    except Exception as e:
+        logger.exception(f'/pubmed-to-gse-flat exception {e}')
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/gse-details', methods=['POST'])
 def get_gse_details():
@@ -331,17 +404,17 @@ def get_gsm_details():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/relevant_datasets', methods=['POST'])
+@app.route('/relevant-datasets', methods=['POST'])
 def get_relevant_datasets():
     """
-    POST endpoint to retrieve most relevant datasets for a query and PubMed IDs.
+    POST endpoint to retrieve most relevant datasets for a query and GSE accession numbers.
     ---
     summary: Get relevant GSE datasets with relevance scores
     description: |
-      Retrieves Gene Expression Omnibus Series (GSE) datasets linked to the provided PubMed IDs,
-      then ranks them by cosine similarity between the query embedding and dataset text
+      Retrieves Gene Expression Omnibus Series (GSE) datasets for the provided GSE accession
+      numbers, then ranks them by cosine similarity between the query embedding and dataset text
       (title, summary, overall design).
-      Endpoint path: /relevant_datasets
+      Endpoint path: /relevant-datasets
     parameters:
       - name: body
         in: body
@@ -349,24 +422,24 @@ def get_relevant_datasets():
         schema:
           type: object
           properties:
-            pubmed_ids:
+            gse_ids:
               type: array
               items:
                 type: string
               example:
-                - "30530648"
-                - "31018141"
+                - "GSE116672"
+                - "GSE127884"
             query:
               type: string
               example: "mouse brain"
           required:
-            - pubmed_ids
+            - gse_ids
             - query
           example:
-            pubmed_ids:
-              - "30530648"
-              - "31018141"
-              - "41620577"
+            gse_ids:
+              - "GSE116672"
+              - "GSE127884"
+              - "GSE137444"
             query: "mouse brain"
     responses:
       200:
@@ -398,7 +471,7 @@ def get_relevant_datasets():
               type: string
         examples:
           application/json:
-            error: "pubmed_ids must be a non-empty list"
+            error: "gse_ids must be a non-empty list"
       503:
         description: Service Unavailable - sentence-transformer server is not available
         schema:
@@ -417,33 +490,31 @@ def get_relevant_datasets():
             error:
               type: string
     """
-    logger.info(f'/relevant_datasets {log_request(request)}')
+    logger.info(f'/relevant-datasets {log_request(request)}')
     payload = request.get_json(silent=True) or {}
-    pubmed_ids = payload.get('pubmed_ids')
+    gse_ids = payload.get('gse_ids')
     query = payload.get('query')
 
-    if not isinstance(pubmed_ids, list) or not pubmed_ids:
-        return jsonify({"error": "pubmed_ids must be a non-empty list"}), 400
+    if not isinstance(gse_ids, list) or not gse_ids:
+        return jsonify({"error": "gse_ids must be a non-empty list"}), 400
     if not isinstance(query, str) or not query.strip():
         return jsonify({"error": "query must be a non-empty string"}), 400
 
-    pubmed_ids = [str(pid).strip() for pid in pubmed_ids if str(pid).strip()]
-    if not pubmed_ids:
-        return jsonify({"error": "At least one valid PubMed ID is required"}), 400
+    gse_accessions = [str(gid).strip().upper() for gid in gse_ids if str(gid).strip()]
+    if not gse_accessions:
+        return jsonify({"error": "At least one valid GSE ID is required"}), 400
 
     try:
         with requests.Session() as http_session:
-            dataset_linker = create_chained_linker(http_session)
-            gse_accessions = dataset_linker.link_to_datasets(pubmed_ids)
             gses = _get_gse_details(gse_accessions, http_session)
             gse_gsm_map = gsm_repository.get_gse_gsm_mapping(gse_accessions)
             gses_with_gsms = [GSEWithGSMs(gse, gse_gsm_map.get(gse.gse, [])) for gse in gses]
         return jsonify(semantic_search.rank_by_relevance(gses_with_gsms, query))
     except EmbeddingsServiceError as e:
-        logger.error(f'/relevant_datasets embeddings service error: {e}')
+        logger.error(f'/relevant-datasets embeddings service error: {e}')
         return jsonify({"error": str(e)}), 503
     except Exception as e:
-        logger.exception(f'/relevant_datasets exception {e}')
+        logger.exception(f'/relevant-datasets exception {e}')
         return jsonify({"error": str(e)}), 500
 
 

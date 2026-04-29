@@ -88,10 +88,10 @@ swagger_template = {
                     "description": "Information about supplementary files",
                     "example": "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE12nnn/GSE12345/suppl/"
                 },
-                "publication_date": {
+                "publication_year": {
                     "type": "string",
-                    "description": "Date of publication",
-                    "example": "2026-01-01"
+                    "description": "Year of publication",
+                    "example": "2026"
                 }
             }
         },
@@ -99,7 +99,9 @@ swagger_template = {
             "type": "object",
             "properties": {
                 "gse_accession": {
-                    "$ref": "#/definitions/GSE"
+                    "type": "string",
+                    "description": "Dataset GSE accession number",
+                    "example": "GSE12345"
                 },
                 "score": {
                     "type": "number",
