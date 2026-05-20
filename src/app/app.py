@@ -502,6 +502,7 @@ def get_relevant_datasets():
         return jsonify({"error": "query must be a non-empty string"}), 400
 
     gse_accessions = [str(gid).strip().upper() for gid in gse_ids if str(gid).strip()]
+    gse_accessions = list(filter(lambda gid: gid.startswith('GSE'), gse_accessions))
     if not gse_accessions:
         return jsonify({"error": "At least one valid GSE ID is required"}), 400
 
@@ -606,6 +607,7 @@ def get_relevant_datasets_by_embedding():
     if not isinstance(gse_accessions, list) or not gse_accessions:
         return jsonify({"error": "gse_accessions must be a non-empty list"}), 400
     gse_accessions = [str(acc).strip() for acc in gse_accessions if str(acc).strip()]
+    gse_accessions = list(filter(lambda gid: gid.startswith('GSE'), gse_accessions))
     if not gse_accessions:
         return jsonify({"error": "At least one valid GSE accession is required"}), 400
 
