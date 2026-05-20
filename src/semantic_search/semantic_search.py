@@ -1,7 +1,7 @@
 import concurrent
 import logging
 import time
-from typing import List, Iterable
+from typing import List, Iterable, Any
 
 import numpy as np
 import spacy
@@ -167,8 +167,13 @@ class SemanticSearcher:
             return []
         query_embedding = fetch_texts_embedding([query], self.embeddings_service_url)[0]
 
+        return self.rank_by_similarity(gses_with_gsms, query_embedding)
+
+    def rank_by_similarity(self, gses_with_gsms: list[GSEWithGSMs], query_embedding: np.ndarray) -> list[Any]:
         embeddings_with_gse = self.embed_gses(gses_with_gsms)
         embeddings = np.array([embedding for embedding, _ in embeddings_with_gse])
+        if query_embedding.shape[0] != embeddings.shape[1]:
+            raise ValueError(f"Embedding dimension mismatch: query embedding has {query_embedding.shape[0]} dimensions, but embeddings have {embeddings.shape[1]} dimensions")
         scores = cosine_similarity(query_embedding, embeddings)
         scored_gses = [
             ScoredGSE(gse.gse, score)

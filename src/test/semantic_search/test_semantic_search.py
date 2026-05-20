@@ -165,3 +165,27 @@ class TestSemanticSearch(unittest.TestCase):
     def test_rank_by_relevance_empty_input(self):
         result = self.semantic_search.rank_by_relevance([], "query")
         self.assertEqual(result, [])
+
+    @parameterized.expand([
+        (
+            np.array([1.0, 0.0]),
+            {"dengue": [1.0, 0.0], "alzheimer": [0.0, 1.0], "microglia transplanted": [1.0, 0.0]},
+            [
+                ScoredGSE(GSEs_TO_SEARCH[0].gse.gse, 1.0),
+                ScoredGSE(GSEs_TO_SEARCH[2].gse.gse, 1.0),
+                ScoredGSE(GSEs_TO_SEARCH[1].gse.gse, 0.0),
+            ]
+        ),
+    ])
+    def test_rank_by_similarity(self, query_embedding: np.ndarray,
+                                embeddings_if_word_present: Dict[str, List[float]],
+                                expected_result: List[ScoredGSE]):
+        self.fetch_texts_embedding.side_effect = lambda texts, url, batch_size=64: TestSemanticSearch._mock_fetch_texts_embedding(
+            texts, embeddings_if_word_present)
+        result = self.semantic_search.rank_by_similarity(GSEs_TO_SEARCH, query_embedding)
+        # Only called once (for GSE chunks; no query embedding call)
+        self.assertEqual(self.fetch_texts_embedding.call_count, 1)
+        for i, scored_gse in enumerate(result):
+            self.assertEqual(scored_gse.gse_accession, expected_result[i].gse_accession)
+            self.assertAlmostEqual(scored_gse.score, expected_result[i].score)
+
