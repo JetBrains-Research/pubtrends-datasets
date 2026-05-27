@@ -78,7 +78,7 @@ class GSMRepository(GSMLoader):
                 gsms = {gsm.gsm: gsm for gsm in session.scalars(statement_gsms).all()}
 
                 for gse_acc in gse_gsm_map:
-                    gse_gsm_map[gse_acc] = [gsms[gsm_acc] for gsm_acc in gse_gsm_map[gse_acc]]
+                    gse_gsm_map[gse_acc] = [gsms[gsm_acc] for gsm_acc in gse_gsm_map[gse_acc] if gsm_acc in gsms]
 
                 return gse_gsm_map
 
