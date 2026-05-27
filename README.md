@@ -27,6 +27,10 @@ configure the project.
 After the script finishes, copy the `config.properties` file to
 `~/.pubtrends-datasets/config.properties`. Feel free to edit this file if you need to override the default configurations.
 
+> [!NOTE]
+> Re-run the setup script when you update the project.
+
+
 ### Sentence-Transformers Service
 
 The app uses this service to generate text embeddings for the Relevant Datasets feature.
