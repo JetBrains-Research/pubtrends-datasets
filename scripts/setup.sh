@@ -35,6 +35,10 @@ else
     wget -nc -O "${geometadb_path}.gz" "$GEOMETADB_DOWNLOAD_LINK"
     gunzip "${geometadb_path}.gz"
 fi
+
+echo 'Adding foreign key constraint to geometadb'
+sqlite3 "${geometadb_path}" < scripts/gse_gsm_foreign_key_geometadb.sql
+
 sed -i "s|^geometadb_path\\s*=\\s*.*|geometadb_path = ${geometadb_path}|" config.properties
 
 echo '4. Creating ~/.pubtrends-datasets directory'
