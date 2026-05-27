@@ -106,6 +106,22 @@ def _get_gsm_details(gsm_accessions: list[str], http_session) -> list[GSM]:
     )
     return chained_loader.get_gsms(gsm_accessions)
 
+@app.route("/")
+def health_check():
+    """
+    GET endpoint to check if the service is running.
+    ---
+    summary: Health check
+    description: Returns a plain-text message confirming the service is up.
+    responses:
+      200:
+        description: Service is running
+        schema:
+          type: string
+          example: "The PubTrends Datasets Service is running"
+    """
+    return "The PubTrends Datasets Service is running", 200
+
 
 @app.route('/pubmed-to-gse', methods=['POST'])
 def get_pubmed_to_gse():

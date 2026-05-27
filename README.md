@@ -59,7 +59,7 @@ The Relevant Datasets feature supports the following properties in `config.prope
 You can start the app using this command:
 
 ```aiignore
-uv run -- flask --app src.app.app run --port 5002
+uv run -- flask --app src.app.app run --port 5003
 ```
 
 The app will be available at `http://localhost:5002`.
