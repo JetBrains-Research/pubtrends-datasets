@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from src.db.loaders.gsm_loader import GSMLoader
 from src.db.models import GSE_GSM
 from src.db.models.gsm import GSM
+from src.db.repositories.is_disk_full_db_error import handle_disk_space_error
 from src.db.repositories.sqlalchemy_engine_helpers import create_sync_engine
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,7 @@ class GSMRepository(GSMLoader):
         self.engine = create_sync_engine(geometadb_path)
         self.geometadb_path = geometadb_path
 
+    @handle_disk_space_error
     def save_gsms(self, gsms: List[GSM]) -> None:
         """
         Saves GEO samples to the geometadb sqlite database.

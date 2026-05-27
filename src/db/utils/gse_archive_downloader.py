@@ -1,13 +1,15 @@
 import asyncio
+import errno
 import gzip
 import logging
 import os
 
 import aiofiles
 import aiohttp
-from tenacity import retry, stop_after_attempt
+from tenacity import retry, retry_if_not_exception_type, stop_after_attempt
 
 from src.config.config import Config
+from src.exception.disk_space_error import DiskSpaceError
 from src.db.utils.pipeline_models import DownloadedArchive
 from src.helpers.is_gzip_vaild import is_gzip_valid
 from src.helpers.remove_if_exists import async_remove_if_exists
@@ -26,7 +28,7 @@ class GSEArchiveDownloader:
         self.session = session
         self.dont_redownload = dont_redownload
 
-    @retry(stop=stop_after_attempt(RETRY_ATTEMPTS), reraise=True)
+    @retry(stop=stop_after_attempt(RETRY_ATTEMPTS), retry=retry_if_not_exception_type(DiskSpaceError), reraise=True)
     async def download_gzip(self, download_path: str, url: str) -> None:
         """
         Download a gzip archive from the given URL and save it to the given path.
@@ -48,6 +50,13 @@ class GSEArchiveDownloader:
         except (aiohttp.ClientResponseError, aiohttp.ClientConnectionError, asyncio.TimeoutError) as exc:
             logger.exception("Network error downloading %s", url)
             await async_remove_if_exists(download_path)
+            raise exc
+        except OSError as exc:
+            await async_remove_if_exists(download_path)
+            if exc.errno == errno.ENOSPC:
+                logger.critical("Disk space exhausted while downloading %s — aborting backfill", url)
+                raise DiskSpaceError(f"No disk space left on device while downloading {url}") from exc
+            logger.exception("Unexpected error saving %s to %s", url, download_path)
             raise exc
         except Exception as exc:
             logger.exception("Unexpected error saving %s to %s", url, download_path)
