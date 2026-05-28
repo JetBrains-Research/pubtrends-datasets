@@ -76,8 +76,10 @@ class GSEArchiveDownloader:
         :param gse_accession: GEO accession code.
         :return: Archive URL.
         """
+        # Replace last 3 digits with 'nnn' if accession contains more than 3 digits, otherwise use 'GSEnnn'
+        gse_number_batch_prefix = f"{gse_accession[:-3]}nnn" if len(gse_accession) > 6 else "GSEnnn"
         return (
             f"https://{GEO_FTP_HOST}/"
-            f"/geo/series/{gse_accession[:-3]}nnn/{gse_accession}/soft/"
+            f"geo/series/{gse_number_batch_prefix}/{gse_accession}/soft/"
             f"{gse_accession}_family.soft.gz"
         )
