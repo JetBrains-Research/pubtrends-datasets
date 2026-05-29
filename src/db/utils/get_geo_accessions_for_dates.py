@@ -8,11 +8,11 @@ from urllib.request import urlopen, URLError
 ESEARCH_BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 
 
-def url_open(url, timeout=2, n_trials=5, sleep_time=2):
+def url_open(url, timeout=5, n_trials=5, sleep_time=2):
     """
     Try open given url during specified timeout
     :param url: url string
-    :param timeout: in seconds (e.g., 2 = 2 seconds)
+    :param timeout: in seconds (e.g., 5 = 5 seconds)
     :param n_trials: number of trials
     :param sleep_time: in seconds (e.g., 2 = 2 seconds to sleep)
     :return: http.client.HTTPResponse object in case of success
@@ -22,7 +22,7 @@ def url_open(url, timeout=2, n_trials=5, sleep_time=2):
         try:
             response = urlopen(url, timeout=timeout)
             return response
-        except URLError as e:
+        except (URLError, TimeoutError) as e:
             latest_exception = e
             time.sleep(sleep_time)
     raise latest_exception
