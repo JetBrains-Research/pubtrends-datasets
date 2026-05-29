@@ -6,6 +6,8 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 
+from sqlalchemy.exc import DBAPIError
+
 from src.config.config import Config
 from src.db.repositories.gse_repository import GSERepository
 from src.db.repositories.gsm_repository import GSMRepository
@@ -35,7 +37,8 @@ class TestDiskSpaceBackfill(unittest.TestCase):
         self.filler_file = Path(os.path.join(self.dataset_download_folder, "filler.tmp"))
 
     def tearDown(self) -> None:
-        self.filler_file.unlink()
+        if self.filler_file.exists():
+            self.filler_file.unlink()
         for soft_file in Path(self.dataset_download_folder).glob("*.soft.gz"):
             soft_file.unlink()
 
@@ -51,7 +54,7 @@ class TestDiskSpaceBackfill(unittest.TestCase):
             the wrong path in scenario 2.
         """
         # --- Scenario 1: FS fills up during backfill ---
-        with self.assertRaises(DiskSpaceError):
+        with self.assertRaises(DBAPIError):
             self.backfiller.backfill_geometadb(datetime(2024, 3, 1), datetime(2024, 3, 2), skip_existing=False, ignore_failures=True, dont_redownload=False)
 
         # --- Scenario 2: FS is already full when download begins ---

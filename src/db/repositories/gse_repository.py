@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session, selectinload
 from src.db.loaders.gse_loader import GSELoader
 from src.db.models import GSM, GSE_GSM
 from src.db.models.gse import GSE
-from src.db.repositories.is_disk_full_db_error import handle_disk_space_error
 from src.db.repositories.sqlalchemy_engine_helpers import create_sync_engine
 
 logger = logging.getLogger(__name__)
@@ -27,7 +26,6 @@ class GSERepository(GSELoader):
         self.geometadb_path = geometadb_path
         self.write_lock = threading.Lock()
 
-    @handle_disk_space_error
     def save_gses(self, gses: List[GSE]) -> None:
         """
         Saves GEO datasets to the geometadb sqlite database.
@@ -45,7 +43,6 @@ class GSERepository(GSELoader):
             logger.exception("Failed to save GEO datasets to geometadb:")
             raise
 
-    @handle_disk_space_error
     def save_gses_with_gsms(self, gses: List[GSE], gsms: List[GSM]):
         if not gses or not gsms:
             return

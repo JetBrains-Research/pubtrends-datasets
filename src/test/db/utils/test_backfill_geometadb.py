@@ -6,6 +6,7 @@ from unittest.mock import Mock, AsyncMock, patch
 
 import pandas.errors
 from parameterized import parameterized
+from sqlalchemy.exc import OperationalError as SAOperationalError
 
 from src.config.config import Config
 from src.db.models import GSE
@@ -120,6 +121,38 @@ class TestGEOmetadbBackfiller(unittest.TestCase):
         # Should not download since it already exists
         self.mock_downloader.return_value.download_gse_archive.assert_not_called()
         self.assertEqual(len(datasets), 0)
+
+    def test_database_error_stops_backfill(self):
+        """
+        Verify that a database error (SAOperationalError) propagates even when ignore_failures=True.
+
+        The wrap() helper re-raises SAOperationalError unconditionally so that a DB failure
+        always halts the backfill, regardless of the ignore_failures flag.
+        """
+        mock_downloaded_archive = Mock()
+        mock_downloaded_archive.accession = self.gse_accessions[0]
+        mock_downloaded_archive.archive_path = "/tmp/test.gz"
+
+        gse = self._create_mock_gse(self.gse_accessions[0])
+        mock_parsed_dataset = Mock()
+        mock_parsed_dataset.accession = self.gse_accessions[0]
+        mock_parsed_dataset.gse = gse
+        mock_parsed_dataset.gsms = []
+
+        self.mock_downloader.return_value.download_gse_archive = AsyncMock(return_value=mock_downloaded_archive)
+        self.mock_parser_instance.submit_archive_for_parsing = AsyncMock(return_value=mock_parsed_dataset)
+        self.gse_repository.save_gses_with_gsms.side_effect = SAOperationalError(
+            "INSERT INTO gse", {}, Exception("database error")
+        )
+
+        self.assertRaises(
+            SAOperationalError,
+            self.backfiller.backfill_geometadb,
+            self.start_date,
+            self.end_date,
+            ignore_failures=True,
+        )
+        self.gse_repository.save_gses_with_gsms.assert_called_once()
 
     def test_backfill_geometadb_ignore_failures(self):
         self.mock_get_accessions.return_value = ["GSE000000", "GSE000001"]

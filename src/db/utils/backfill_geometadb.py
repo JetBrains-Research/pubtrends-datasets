@@ -4,6 +4,7 @@ import logging
 from concurrent.futures import ProcessPoolExecutor
 
 import aiohttp
+from sqlalchemy.exc import SQLAlchemyError, DBAPIError
 from tqdm.asyncio import tqdm_asyncio as tqdm
 
 from src.config.config import Config
@@ -11,10 +12,10 @@ from src.config.configure_log_file import configure_log_file
 from src.db.models import GSE
 from src.db.repositories.gse_repository import GSERepository
 from src.db.repositories.gsm_repository import GSMRepository
-from src.exception.disk_space_error import DiskSpaceError
 from src.db.utils.get_geo_accessions_for_dates import get_gse_ids_by_last_update_date
 from src.db.utils.gse_archive_downloader import GSEArchiveDownloader
 from src.db.utils.gse_archive_parser import GSEArchiveParser
+from src.exception.disk_space_error import DiskSpaceError
 
 RETRY_ATTEMPTS = 3
 GEO_FTP_HOST = "ftp.ncbi.nlm.nih.gov"
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 async def wrap(f):
     try:
         return await f
-    except DiskSpaceError:
+    except (DBAPIError, SQLAlchemyError, DiskSpaceError):
         raise
     except Exception as e:
         return e
