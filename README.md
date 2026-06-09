@@ -131,7 +131,22 @@ docker build -f resources/docker/test/Dockerfile -t biolabs/pubtrends-datasets-t
 ```
 
 2. Run the tests:
+ 
+If running on a Linux host:
+```aiignore
+docker run --rm --platform linux/amd64 \
+-e TEST_DISK_SPACE_BACKFILL=1 \
+--name pubtrends-datasets-test \
+--tmpfs /home/user/geodatasets_mnt:size=1M \
+--volume=$(pwd)/src:/pubtrends-datasets/src \
+--volume=$(pwd)/pyproject.toml:/pubtrends-datasets/pyproject.toml \
+--volume=$(pwd)/uv.lock:/pubtrends-datasets/uv.lock \
+--volume=$(pwd)/resources/docker/test/test.config.properties:/home/user/.pubtrends-datasets/config.properties \
+-i -t biolabs/pubtrends-datasets-test \
+/bin/bash -c "cd /pubtrends-datasets && uv sync --locked && cp /home/user/geodatasets/testgeometadb.sqlite /home/user/geodatasets_mnt/ && uv run python -m unittest discover src/test"
+```
 
+Otherwise:
 ```aiignore
 docker run --rm --platform linux/amd64 \
 --name pubtrends-datasets-test \
@@ -140,5 +155,5 @@ docker run --rm --platform linux/amd64 \
 --volume=$(pwd)/uv.lock:/pubtrends-datasets/uv.lock \
 --volume=$(pwd)/resources/docker/test/test.config.properties:/home/user/.pubtrends-datasets/config.properties \
 -i -t biolabs/pubtrends-datasets-test \
-/bin/bash -c "cd /pubtrends-datasets; uv sync --locked; uv run python -m unittest discover src/test"
+/bin/bash -c "cd /pubtrends-datasets && uv sync --locked && mkdir /home/user/geodatasets_mnt && cp /home/user/geodatasets/testgeometadb.sqlite /home/user/geodatasets_mnt && uv run python -m unittest discover src/test"
 ```

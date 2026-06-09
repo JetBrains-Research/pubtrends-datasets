@@ -15,6 +15,7 @@ from src.db.repositories.sqlalchemy_engine_helpers import create_sync_engine
 logger = logging.getLogger(__name__)
 
 
+
 class GSERepository(GSELoader):
     def __init__(self, geometadb_path: str) -> None:
         if not os.path.isfile(geometadb_path):

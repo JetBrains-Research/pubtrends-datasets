@@ -4,6 +4,7 @@ import logging
 from concurrent.futures import ProcessPoolExecutor
 
 import aiohttp
+from sqlalchemy.exc import SQLAlchemyError, DBAPIError
 from tqdm.asyncio import tqdm_asyncio as tqdm
 
 from src.config.config import Config
@@ -14,21 +15,24 @@ from src.db.repositories.gsm_repository import GSMRepository
 from src.db.utils.get_geo_accessions_for_dates import get_gse_ids_by_last_update_date
 from src.db.utils.gse_archive_downloader import GSEArchiveDownloader
 from src.db.utils.gse_archive_parser import GSEArchiveParser
+from src.exception.disk_space_error import DiskSpaceError
 
 RETRY_ATTEMPTS = 3
 GEO_FTP_HOST = "ftp.ncbi.nlm.nih.gov"
 logger = logging.getLogger(__name__)
 
 
+async def wrap(f):
+    try:
+        return await f
+    except (DBAPIError, SQLAlchemyError, DiskSpaceError):
+        raise
+    except Exception as e:
+        return e
+
 async def tqdm_gather(*fs, return_exceptions=False, **kwargs):
     if not return_exceptions:
         return await tqdm.gather(*fs, **kwargs)
-
-    async def wrap(f):
-        try:
-            return await f
-        except Exception as e:
-            return e
 
     return await tqdm.gather(*map(wrap, fs), **kwargs)
 
@@ -117,7 +121,10 @@ class GEOmetadbBackfiller:
         """Dispatch tasks using tqdm or plain asyncio.gather depending on show_progress."""
         if self.show_progress:
             return await tqdm_gather(*tasks, return_exceptions=return_exceptions)
-        return await asyncio.gather(*tasks, return_exceptions=return_exceptions)
+        if not return_exceptions:
+            return await asyncio.gather(*tasks)
+
+        return await asyncio.gather(*map(wrap, tasks))
 
     async def download_datasets(
             self,
