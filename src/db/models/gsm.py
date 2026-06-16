@@ -18,9 +18,9 @@ class GSM:
     )
     __sa_dataclass_metadata_key__ = "sa"
 
+    gsm: str = field(metadata={"sa": Column(Text, primary_key=True)})
     ID: Optional[float] = field(default=None, metadata={"sa": Column(REAL)})
     title: Optional[str] = field(default=None, metadata={"sa": Column(Text)})
-    gsm: Optional[str] = field(default=None, metadata={"sa": Column(Text, primary_key=True)})
     series_id: Optional[str] = field(default=None, metadata={"sa": Column(Text)})
     gpl: Optional[str] = field(default=None, metadata={"sa": Column(Text)})
     status: Optional[str] = field(default=None, metadata={"sa": Column(Text)})
