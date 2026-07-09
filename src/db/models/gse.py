@@ -27,9 +27,9 @@ class GSE:
     )
     __sa_dataclass_metadata_key__ = "sa"
 
+    gse: str = field(metadata={"sa": Column(Text, primary_key=True)})
     ID: Optional[float] = field(default=None, metadata={"sa": Column(REAL)})
     title: Optional[str] = field(default=None, metadata={"sa": Column(Text)})
-    gse: Optional[str] = field(default=None, metadata={"sa": Column(Text, primary_key=True)})
     status: Optional[str] = field(default=None, metadata={"sa": Column(Text)})
     submission_date: Optional[str] = field(default=None, metadata={"sa": Column(Text)})
     last_update_date: Optional[str] = field(default=None, metadata={"sa": Column(Text)})

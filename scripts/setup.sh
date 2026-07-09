@@ -39,6 +39,9 @@ fi
 echo 'Adding foreign key constraint to geometadb'
 sqlite3 "${geometadb_path}" < scripts/gse_gsm_foreign_key_geometadb.sql
 
+echo 'Making gse and gsm columns non-nullable'
+sqlite3 "${geometadb_path}" < scripts/make_gse_gsm_columns_not_null.sql
+
 sed -i "s|^geometadb_path\\s*=\\s*.*|geometadb_path = ${geometadb_path}|" config.properties
 
 echo '4. Creating ~/.pubtrends-datasets directory'
