@@ -63,14 +63,14 @@ The Relevant Datasets feature supports the following properties in `config.prope
 You can start the app using this command:
 
 ```aiignore
-uv run -- flask --app src.app.app run --port 5003
+uv run -- flask --app src.app.app run --port 5003 --host 0.0.0.0
 ```
 
-The app will be available at `http://localhost:5002`.
+The app will be available at `http://localhost:5003`.
 
 ### API Documentation
 
-The API documentation is available at `http://localhost:5002/apidocs`.
+The API documentation is available at `http://localhost:5003/apidocs`.
 
 ## GEO Dataset Downloading and Processing
 
