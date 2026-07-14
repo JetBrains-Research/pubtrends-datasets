@@ -12,6 +12,7 @@ Datasets integration for PubTrends
 
 - Python 3
 - uv
+- sqlite >= 3.50
 
 ### General Setup
 
