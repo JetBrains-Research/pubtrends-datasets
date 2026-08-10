@@ -1,20 +1,19 @@
 import unittest
+from math import sqrt
 from typing import List, Dict
 from unittest.mock import patch
 
 import numpy as np
-from math import sqrt
 from parameterized import parameterized
 
 from src.config.config import Config
 from src.db.models.gse import GSE
-from src.db.models.gse_with_gsms import GSEWithGSMs
 from src.semantic_search.scored_gse import ScoredGSE
 from src.semantic_search.semantic_search import SemanticSearcher, get_chunks, \
     stable_deduplicate
 
 GSEs_TO_SEARCH = [
-    GSEWithGSMs(GSE(
+    GSE(
         title="In vivo molecular signatures of severe dengue infection revealed by viscRNA-Seq",
         gse="GSE116672",
         status="Public on Nov 19 2018",
@@ -32,8 +31,8 @@ GSEs_TO_SEARCH = [
         variable_description=None,
         contact="Name: Fabio Zanini;    Email: fabio.zanini@fastmail.fm;    Laboratory: Zanini; Institute: University of New South Wales;   Address: High and Botany St;    City: Kensington;   State: NSW; Zip/postal_code: 2033;  Country: Australia",
         supplementary_file="ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE116nnn/GSE116672/suppl/GSE116672_RAW.tar"
-    ), []),
-    GSEWithGSMs(GSE(
+    ),
+    GSE(
         title="The major risk factors for Alzheimer's disease: Age, Sex and Genes, modulate the microglia response to Aβ plaques (CDEP)",
         gse="GSE127884",
         status="Public on Apr 23 2019",
@@ -51,8 +50,8 @@ GSEs_TO_SEARCH = [
         variable_description=None,
         contact="Name: Bart de Strooper;    Email: bart.destrooper@kuleuven.be; Department: VIB-KU Leuven Center for Brain & Disease Research;  Institute: KULeuven;    Address: Campus Gasthuisberg, Herestraat 49, bus 602;   City: Leuven;   Zip/postal_code: 3000;  Country: Belgium",
         supplementary_file="ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE127nnn/GSE127884/suppl/GSE127884_microglia.cdep.SeuratNorm.tsv.gz; ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE127nnn/GSE127884/suppl/GSE127884_microglia.cdep.meta.csv.gz;   ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE127nnn/GSE127884/suppl/GSE127884_microglia.cdep.raw.tsv.gz"
-    ), []),
-    GSEWithGSMs(GSE(
+    ),
+    GSE(
         title="Stem cell derived human microglia transplanted in mouse brain to study human disease",
         gse="GSE137444",
         status="Public on Oct 16 2019",
@@ -70,7 +69,7 @@ GSEs_TO_SEARCH = [
         variable_description=None,
         contact="Name: Mark Fiers;  Email: mark.fiers@kuleuven.vib.be;  Department: Center for Brain and Disease;   Institute: VIB; Address: Herestraat 49; City: Leuven;   Zip/postal_code: 3000;  Country: Belgium",
         supplementary_file="ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE137nnn/GSE137444/suppl/GSE137444_chimera_human_h9.tsv.gz;  ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE137nnn/GSE137444/suppl/GSE137444_chimera_mouse.tsv.gz; ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE137nnn/GSE137444/suppl/GSE137444_human_patient.tsv.gz; ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE137nnn/GSE137444/suppl/GSE137444_invitro_mh_mc.tsv.gz"
-    ), []),
+    ),
 ]
 
 
@@ -148,11 +147,11 @@ class TestSemanticSearch(unittest.TestCase):
 
     @parameterized.expand([
         ("mouse brain", {"mouse brain": [1, 1], "alzheimer's": [1, 2]},
-         [ScoredGSE(GSEs_TO_SEARCH[2].gse.gse, 1.0), ScoredGSE(GSEs_TO_SEARCH[1].gse.gse, 3 / sqrt(2) / sqrt(5)),
-          ScoredGSE(GSEs_TO_SEARCH[0].gse.gse, 0.0)])
+         [ScoredGSE(GSEs_TO_SEARCH[2].gse, 1.0), ScoredGSE(GSEs_TO_SEARCH[1].gse, 3 / sqrt(2) / sqrt(5)),
+          ScoredGSE(GSEs_TO_SEARCH[0].gse, 0.0)])
     ])
     def test_rank_by_relevance(self, query: str, embeddings_if_word_present: Dict[str, List[float]],
-                               expected_result: List[GSE]):
+                               expected_result: List[ScoredGSE]):
         self.fetch_texts_embedding.side_effect = lambda texts, url, batch_size=64: TestSemanticSearch._mock_fetch_texts_embedding(
             texts, embeddings_if_word_present)
         result = self.semantic_search.rank_by_relevance(GSEs_TO_SEARCH, query)
@@ -171,9 +170,9 @@ class TestSemanticSearch(unittest.TestCase):
             np.array([1.0, 0.0]),
             {"dengue": [1.0, 0.0], "alzheimer": [0.0, 1.0], "microglia transplanted": [1.0, 0.0]},
             [
-                ScoredGSE(GSEs_TO_SEARCH[0].gse.gse, 1.0),
-                ScoredGSE(GSEs_TO_SEARCH[2].gse.gse, 1.0),
-                ScoredGSE(GSEs_TO_SEARCH[1].gse.gse, 0.0),
+                ScoredGSE(GSEs_TO_SEARCH[0].gse, 1.0),
+                ScoredGSE(GSEs_TO_SEARCH[2].gse, 1.0),
+                ScoredGSE(GSEs_TO_SEARCH[1].gse, 0.0),
             ]
         ),
     ])

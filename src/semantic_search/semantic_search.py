@@ -8,7 +8,6 @@ import spacy
 
 from src.config.config import Config
 from src.db.models.gse import GSE
-from src.db.models.gse_with_gsms import GSEWithGSMs
 from src.semantic_search.embeddings_service import fetch_texts_embedding
 from src.semantic_search.scored_gse import ScoredGSE
 
@@ -94,15 +93,13 @@ class SemanticSearcher:
     def _get_chunks(self, text: str) -> List[str]:
         return get_chunks(text, self.max_tokens_per_chunk, self.overlap_sentences)
 
-    def chunk_gse(self, gse_with_gsms: GSEWithGSMs) -> List[str]:
+    def chunk_gse(self, gse: GSE) -> List[str]:
         """
         Chunk the metadata of a GSE and its GSMs into smaller chunks for embedding.
 
-        :param gse_with_gsms: A GSE and its associated GSMs to chunk.
+        :param gse: A GSE and its associated GSMs to chunk.
         :returns: List of text chunks derived from the GSE and GSM metadata.
         """
-        gse = gse_with_gsms.gse
-        gsms = gse_with_gsms.gsms
         chunks = [gse.title]
         if gse.is_superseries():
             return chunks
@@ -110,20 +107,16 @@ class SemanticSearcher:
             chunks.extend(self._get_chunks(gse.summary))
         if gse.overall_design:
             chunks.extend(self._get_chunks(gse.overall_design))
-        if gsms:
-            chunks.extend(
-                chunk for gsm in gsms for chunk in self._get_chunks(str(gsm))
-            )
         return chunks
 
-    def embed_gses(self, gses_with_gsms: List[GSEWithGSMs]) -> list[tuple[np.ndarray, GSE]]:
+    def embed_gses(self, gses: List[GSE]) -> list[tuple[np.ndarray, GSE]]:
         """
         Embed the metadata of a list of GSEs and their GSMs into embeddings.
 
-        :param gses_with_gsms: List of GSEs and their associated GSMs to embed.
+        :param gses: List of GSEs to embed.
         :returns: List of (embedding, GSE) pairs.
         """
-        chunks_with_gse = self.chunk_gses(gses_with_gsms)
+        chunks_with_gse = self.chunk_gses(gses)
 
         embedding_start_time = time.perf_counter()
         embeddings = fetch_texts_embedding([chunk for chunk, _ in chunks_with_gse], self.embeddings_service_url, batch_size=self.embeddings_batch_size)
@@ -133,44 +126,43 @@ class SemanticSearcher:
 
         return [(embedding, gse) for embedding, (_, gse) in zip(embeddings, chunks_with_gse)]
 
-    def chunk_gses(self, gses_with_gsms: list[GSEWithGSMs]) -> list[tuple[str, GSE]]:
+    def chunk_gses(self, gses: list[GSE]) -> list[tuple[str, GSE]]:
         """
         Chunk the metadata of a list of GSEs and their GSMs into smaller chunks for embedding.
 
-        :param gses_with_gsms: List of GSEs and their associated GSMs to chunk.
+        :param gses: List of GSEs and their associated GSMs to chunk.
         :returns: List of (chunk, GSE) pairs.
         """
         start = time.perf_counter()
         with concurrent.futures.ProcessPoolExecutor(max_workers=self.chunking_workers) as executor:
-            chunks_for_gses = list(executor.map(self.chunk_gse, gses_with_gsms))
+            chunks_for_gses = list(executor.map(self.chunk_gse, gses))
             chunks_with_gse = [
-                (chunk, gse_with_gsms.gse)
-                for chunks, gse_with_gsms in zip(chunks_for_gses, gses_with_gsms)
+                (chunk, gse)
+                for chunks, gse in zip(chunks_for_gses, gses)
                 for chunk in chunks
             ]
         end = time.perf_counter()
 
-        number_of_gsms = sum(len(g.gsms) for g in gses_with_gsms)
         logger.info(
-            f"Chunks created in {end - start} seconds for {len(gses_with_gsms)} GSEs and {len(chunks_with_gse)} chunks and {number_of_gsms} GSMs")
+            f"Chunks created in {end - start} seconds for {len(gses)} GSEs and {len(chunks_with_gse)} chunks")
         return chunks_with_gse
 
-    def rank_by_relevance(self, gses_with_gsms: List[GSEWithGSMs], query: str) -> List[ScoredGSE]:
+    def rank_by_relevance(self, gses: List[GSE], query: str) -> List[ScoredGSE]:
         """
         Rank a list of GSEs by relevance to a query using cosine similarity between query and GSE embeddings.
 
-        :param gses_with_gsms: List of GSEs and their associated GSMs to rank.
+        :param gses: List of GSEs to rank.
         :param query: The search query to rank GSEs against.
         :returns: Deduplicated list of GSEs with scores, sorted by descending relevance.
         """
-        if not gses_with_gsms:
+        if not gses:
             return []
         query_embedding = fetch_texts_embedding([query], self.embeddings_service_url)[0]
 
-        return self.rank_by_similarity(gses_with_gsms, query_embedding)
+        return self.rank_by_similarity(gses, query_embedding)
 
-    def rank_by_similarity(self, gses_with_gsms: list[GSEWithGSMs], query_embedding: np.ndarray) -> list[Any]:
-        embeddings_with_gse = self.embed_gses(gses_with_gsms)
+    def rank_by_similarity(self, gses: list[GSE], query_embedding: np.ndarray) -> list[Any]:
+        embeddings_with_gse = self.embed_gses(gses)
         embeddings = np.array([embedding for embedding, _ in embeddings_with_gse])
         if query_embedding.shape[0] != embeddings.shape[1]:
             raise ValueError(f"Embedding dimension mismatch: query embedding has {query_embedding.shape[0]} dimensions, but embeddings have {embeddings.shape[1]} dimensions")
