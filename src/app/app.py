@@ -1,6 +1,5 @@
 """Flask application for GEOmetadb dataset queries."""
 import json
-import re
 from dataclasses import asdict
 
 import numpy as np
@@ -22,7 +21,6 @@ from src.db.loaders.ncbi_gse_loader import NCBIGSELoader
 from src.db.loaders.ncbi_gsm_loader import NCBIGSMLoader
 from src.db.models import mapper_registry
 from src.db.models.gse import GSE_DTO, GSE
-from src.db.models.gse_with_gsms import GSEWithGSMs
 from src.db.models.gsm import GSM
 from src.db.repositories.gse_repository import GSERepository
 from src.db.repositories.gsm_repository import GSMRepository
@@ -525,9 +523,7 @@ def get_relevant_datasets():
     try:
         with requests.Session() as http_session:
             gses = _get_gse_details(gse_accessions, http_session)
-            gse_gsm_map = gsm_repository.get_gse_gsm_mapping(gse_accessions)
-            gses_with_gsms = [GSEWithGSMs(gse, gse_gsm_map.get(gse.gse, [])) for gse in gses]
-        return jsonify(semantic_search.rank_by_relevance(gses_with_gsms, query))
+        return jsonify(semantic_search.rank_by_relevance(gses, query))
     except EmbeddingsServiceError as e:
         logger.error(f'/relevant-datasets embeddings service error: {e}')
         return jsonify({"error": str(e)}), 503
@@ -635,9 +631,7 @@ def get_relevant_datasets_by_embedding():
     try:
         with requests.Session() as http_session:
             gses = _get_gse_details(gse_accessions, http_session)
-            gse_gsm_map = gsm_repository.get_gse_gsm_mapping(gse_accessions)
-            gses_with_gsms = [GSEWithGSMs(gse, gse_gsm_map.get(gse.gse, [])) for gse in gses]
-        return jsonify(semantic_search.rank_by_similarity(gses_with_gsms, np.array(embedding, dtype=float)))
+        return jsonify(semantic_search.rank_by_similarity(gses, np.array(embedding, dtype=float)))
     except EmbeddingsServiceError as e:
         logger.error(f'/relevant-datasets-by-embedding embeddings service error: {e}')
         return jsonify({"error": str(e)}), 503
