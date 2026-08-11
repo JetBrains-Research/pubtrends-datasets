@@ -111,6 +111,24 @@ swagger_template = {
                 }
             },
             "required": ["gse", "score"]
+        },
+        "PaginatedDatasets": {
+            "type": "object",
+            "properties": {
+                "total": {
+                    "type": "integer",
+                    "description": "The total number of datasets matching the query",
+                    "example": 123
+                },
+                "gse_accessions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of GSE accession numbers for the requested page",
+                    "example": ["GSE116672", "GSE127884"]
+                }
+            }
         }
     }
 }

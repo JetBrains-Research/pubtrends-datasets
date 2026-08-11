@@ -24,6 +24,8 @@ from src.db.models.gse import GSE_DTO, GSE
 from src.db.models.gsm import GSM
 from src.db.repositories.gse_repository import GSERepository
 from src.db.repositories.gsm_repository import GSMRepository
+from src.search.datasets_esearch import DatasetsSearch
+from src.search.models import PaginatedDatasets
 from src.semantic_search.embeddings_service import EmbeddingsServiceError
 from src.semantic_search.semantic_search import SemanticSearcher
 
@@ -637,6 +639,68 @@ def get_relevant_datasets_by_embedding():
         return jsonify({"error": str(e)}), 503
     except Exception as e:
         logger.exception(f'/relevant-datasets-by-embedding exception {e}')
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/search-datasets', methods=['GET'])
+def search_datasets():
+    """
+    GET endpoint to search for GEO datasets via ESearch.
+    ---
+    summary: Search for GEO datasets
+    description: Retrieves a paginated list of GSE accession numbers based on a search query.
+    parameters:
+      - name: query
+        in: query
+        type: string
+        required: true
+        description: The search query
+      - name: page
+        in: query
+        type: integer
+        required: false
+        default: 1
+        description: The page number (starting from 1)
+      - name: page_size
+        in: query
+        type: integer
+        required: false
+        default: 20
+        maximum: 1000
+        description: The number of items per page
+    responses:
+      200:
+        description: Successful response with total count and a list of GSE accessions
+        schema:
+          $ref: '#/definitions/PaginatedDatasets'
+      400:
+        description: Bad request - missing or invalid parameters
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+    """
+    logger.info(f'/search-datasets {log_request(request)}')
+    query = request.args.get('query')
+    if not query:
+        return jsonify({"error": "query parameter is required"}), 400
+
+    try:
+        page = request.args.get('page', default=1, type=int)
+        page_size = request.args.get('page_size', default=20, type=int)
+
+        if page < 1:
+            return jsonify({"error": "page parameter must be at least 1"}), 400
+        if page_size < 1:
+            return jsonify({"error": "page_size parameter must be at least 1"}), 400
+
+        with requests.Session() as http_session:
+            searcher = DatasetsSearch(http_session)
+            result = searcher.search(query, page=page, page_size=page_size)
+            return jsonify(asdict(result))
+    except Exception as e:
+        logger.exception(f'/search-datasets exception {e}')
         return jsonify({"error": str(e)}), 500
 
 
