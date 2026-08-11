@@ -1,5 +1,6 @@
 """Flask application for GEOmetadb dataset queries."""
 import json
+import datetime
 from dataclasses import asdict
 
 import numpy as np
@@ -24,7 +25,7 @@ from src.db.models.gse import GSE_DTO, GSE
 from src.db.models.gsm import GSM
 from src.db.repositories.gse_repository import GSERepository
 from src.db.repositories.gsm_repository import GSMRepository
-from src.search.datasets_esearch import DatasetsSearch
+from src.search.datasets_esearch import DatasetsSearch, DatasetSearchFilters
 from src.search.models import PaginatedDatasets
 from src.semantic_search.embeddings_service import EmbeddingsServiceError
 from src.semantic_search.semantic_search import SemanticSearcher
@@ -668,6 +669,38 @@ def search_datasets():
         default: 20
         maximum: 1000
         description: The number of items per page
+      - name: from_pub_date
+        in: query
+        type: string
+        format: date
+        required: false
+        description: Filter datasets published after this date (YYYY-MM-DD)
+      - name: to_pub_date
+        in: query
+        type: string
+        format: date
+        required: false
+        description: Filter datasets published before this date (YYYY-MM-DD)
+      - name: from_update_date
+        in: query
+        type: string
+        format: date
+        required: false
+        description: Filter datasets updated after this date (YYYY-MM-DD)
+      - name: to_update_date
+        in: query
+        type: string
+        format: date
+        required: false
+        description: Filter datasets updated before this date (YYYY-MM-DD)
+      - name: experiment_types
+        in: query
+        type: array
+        items:
+          type: string
+        collectionFormat: multi
+        required: false
+        description: Filter by experiment types
     responses:
       200:
         description: Successful response with total count and a list of GSE accessions
@@ -695,10 +728,41 @@ def search_datasets():
         if page_size < 1:
             return jsonify({"error": "page_size parameter must be at least 1"}), 400
 
+        from_pub_date_str = request.args.get('from_pub_date')
+        to_pub_date_str = request.args.get('to_pub_date')
+        from_update_date_str = request.args.get('from_update_date')
+        to_update_date_str = request.args.get('to_update_date')
+        experiment_types = request.args.getlist('experiment_types')
+
+        def parse_date(date_str):
+            if not date_str:
+                return None
+            try:
+                return datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+            except ValueError:
+                raise ValueError(f"Invalid date format for '{date_str}', expected YYYY-MM-DD")
+
+        filter_args = {}
+        if from_pub_date_str:
+            filter_args['from_pub_date'] = parse_date(from_pub_date_str)
+        if to_pub_date_str:
+            filter_args['to_pub_date'] = parse_date(to_pub_date_str)
+        if from_update_date_str:
+            filter_args['from_update_date'] = parse_date(from_update_date_str)
+        if to_update_date_str:
+            filter_args['to_update_date'] = parse_date(to_update_date_str)
+        if experiment_types:
+            filter_args['experiment_types'] = experiment_types
+
+        filters = DatasetSearchFilters(**filter_args)
+        page_size = min(page_size, 1000)
+
         with requests.Session() as http_session:
             searcher = DatasetsSearch(http_session)
-            result = searcher.search(query, page=page, page_size=page_size)
+            result = searcher.search(query, filters=filters, page=page, page_size=page_size)
             return jsonify(asdict(result))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         logger.exception(f'/search-datasets exception {e}')
         return jsonify({"error": str(e)}), 500
