@@ -24,7 +24,7 @@ class TestDatasetsSearch(unittest.TestCase):
         filter = DatasetSearchFilters()
         result = self.searcher.search("test query", filter)
 
-        self.assertEqual(result, PaginatedDatasets(total=2, gse_accessions=["GSE116672", "GSE127884"]))
+        self.assertEqual(result, PaginatedDatasets(total=2, gse_accessions=["GSE116672", "GSE127884"], page=1, total_pages=1))
         self.mock_session.get.assert_called_once_with(
             "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi",
             params={
@@ -48,7 +48,7 @@ class TestDatasetsSearch(unittest.TestCase):
         filter = DatasetSearchFilters()
         result = self.searcher.search("test query", filters=filter, page=2, page_size=10)
 
-        self.assertEqual(result, PaginatedDatasets(total=100, gse_accessions=["GSE1"]))
+        self.assertEqual(result, PaginatedDatasets(total=100, gse_accessions=["GSE1"], page=2, total_pages=10))
         self.mock_session.get.assert_called_once_with(
             "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi",
             params={

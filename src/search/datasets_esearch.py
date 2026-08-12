@@ -1,5 +1,6 @@
 import datetime
 import logging
+import math
 from typing import Optional
 
 import requests
@@ -58,7 +59,8 @@ class DatasetsSearch:
         # being frozen to the date the function was first defined.
         base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
         retstart = (page - 1) * page_size
-        term = f"{query} AND {filters.get_filter_term()} AND {GSE_FILTER}"
+        query = query.strip()
+        term = f"{query} {'AND' if query else ''} {filters.get_filter_term()} AND {GSE_FILTER}"
         logger.info("Calling ESearch with query: %s", term)
         response = self.session.get(
             f"{base_url}",
@@ -77,4 +79,4 @@ class DatasetsSearch:
         gse_uid_base = 200000000
         gsm_uid_base = 300000000
         items = ["GSE" + str(int(uid) - gse_uid_base) for uid in uids if gse_uid_base < int(uid) < gsm_uid_base]
-        return PaginatedDatasets(total=count, gse_accessions=items)
+        return PaginatedDatasets(total=count, gse_accessions=items, page=page, total_pages=math.ceil(count / page_size))
