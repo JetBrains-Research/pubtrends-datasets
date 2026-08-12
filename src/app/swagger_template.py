@@ -118,7 +118,7 @@ swagger_template = {
                 "total": {
                     "type": "integer",
                     "description": "The total number of datasets matching the query",
-                    "example": 123
+                    "example": 100
                 },
                 "gse_accessions": {
                     "type": "array",
@@ -127,6 +127,16 @@ swagger_template = {
                     },
                     "description": "The list of GSE accession numbers for the requested page",
                     "example": ["GSE116672", "GSE127884"]
+                },
+                "page": {
+                    "type": "integer",
+                    "description": "The current page of results",
+                    "example": 1
+                },
+                "total_pages": {
+                    "type": "integer",
+                    "description": "The total number of pages of results",
+                    "example": 10
                 }
             }
         }
