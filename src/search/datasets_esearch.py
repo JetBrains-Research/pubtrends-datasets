@@ -12,10 +12,14 @@ GSE_FILTER = "gse[ETYP]"
 
 logger = logging.getLogger(__name__)
 
+
 class DatasetSearchFilters:
     """Class for constructing search queries with filters."""
-    def __init__(self, from_pub_date: datetime.date = datetime.date(2000, 1, 1), to_pub_date: Optional[datetime.date] = None,
-                 experiment_types=None, from_update_date: datetime.date = datetime.date(2000, 1, 1), to_update_date: Optional[datetime.date] = None):
+
+    def __init__(self, from_pub_date: datetime.date = datetime.date(2000, 1, 1),
+                 to_pub_date: Optional[datetime.date] = None,
+                 experiment_types: list[str] | None = None, from_update_date: datetime.date = datetime.date(2000, 1, 1),
+                 to_update_date: Optional[datetime.date] = None):
         if experiment_types is None:
             experiment_types = []
         self.from_pub_date = from_pub_date
@@ -28,7 +32,8 @@ class DatasetSearchFilters:
         filter_term = f"({self.from_pub_date.strftime('%Y/%m/%d')}:{self.to_pub_date.strftime('%Y/%m/%d')}[PDAT])"
         filter_term += f" AND ({self.from_update_date.strftime('%Y/%m/%d')}:{self.to_update_date.strftime('%Y/%m/%d')}[UDAT])"
         if self.experiment_types:
-            processed_experiment_types = [f'"{experiment_type}"[DataSet Type]' for experiment_type in self.experiment_types]
+            processed_experiment_types = [f'"{experiment_type}"[DataSet Type]' for experiment_type in
+                                          self.experiment_types]
             filter_term += f" AND ({' OR '.join(processed_experiment_types)})"
         return filter_term
 
@@ -40,7 +45,8 @@ class DatasetsSearch:
         self.session = session
 
     @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3), reraise=True)
-    def search(self, query: str, filters: DatasetSearchFilters, page: int = 1, page_size: int = 20) -> PaginatedDatasets:
+    def search(self, query: str, filters: DatasetSearchFilters, page: int = 1,
+               page_size: int = 20) -> PaginatedDatasets:
         """
         Search for datasets via ESearch with pagination.
 
